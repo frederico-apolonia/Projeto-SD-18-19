@@ -11,6 +11,7 @@ struct node_t {
 
 struct list_t {
 	struct node_t *head;
+	struct node_t * tail;
 };
 
 void list_print(struct list_t* list);
