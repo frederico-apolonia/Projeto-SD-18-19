@@ -6,7 +6,7 @@
 
 struct table_t {
     int size;
-    struct list_t list;
+    struct list_t **list;
     
 };
 
