@@ -26,17 +26,19 @@ void entry_destroy(struct entry_t *entry){
 		data_destroy(entry->value);
 	}
 	if(entry->key != NULL) {
-		//TEMPORARY=============================================
-		//free(entry->key);
+		free(entry->key);
 	}
 	
 	free(entry);
 }
 
 struct entry_t *entry_dup(struct entry_t *entry){
-	struct entry_t *dupEntry = (struct entry_t *) malloc(sizeof(entry));
-	dupEntry->key = strcpy(dupEntry->key, entry->key);
-	dupEntry->value = data_dup(entry->value);
-
+	if(entry == NULL){
+		return NULL;
+	}
+	struct entry_t *dupEntry = entry_create(entry->key,entry->value);
+	if(dupEntry == NULL){
+		return NULL;
+	}
 	return dupEntry;
 }
