@@ -50,22 +50,18 @@ int list_add(struct list_t *list, struct entry_t *entry){
 	}
 
 	struct node_t *noCorr = list->tail;
-	/*while(noCorr->next != NULL){
-		noCorr = noCorr->next;
-	}*/
 	/*Criacao de novo no*/
 	struct node_t *nextNode = (struct node_t*)malloc(sizeof(struct node_t));
 	if(nextNode == NULL){
 		return -1;
-	}else{
-		nextNode->data = entry;
-		nextNode->next = NULL;
-		/*Concatenacao do novo no ao ultimo elemento da lista corrente*/
-		list->size = (list->size)+1;
-		noCorr->next = nextNode;
-		list->tail = nextNode;
-		return 0;
 	}
+	nextNode->data = entry;
+	nextNode->next = NULL;
+	/*Concatenacao do novo no ao ultimo elemento da lista corrente*/
+	list->size = (list->size)+1;
+	noCorr->next = nextNode;
+	list->tail = nextNode;
+	return 0;
 }
 
 int list_remove(struct list_t *list, char *key){
@@ -75,6 +71,7 @@ int list_remove(struct list_t *list, char *key){
 
 	struct node_t *noCorr = list->head, *noAnt;
 
+	// existe apenas 1 elemento na lista
 	if(list->size == 1 && (strcmp(noCorr->data->key,key) == 0)){
 		entry_destroy(noCorr->data);
 		free(noCorr);
@@ -84,16 +81,20 @@ int list_remove(struct list_t *list, char *key){
 		return 0;
 	}
 
+	// o no a remover e a head
 	if(noCorr != NULL && (strcmp(noCorr->data->key,key) == 0)){
+		printf("DELETING LIST HEAD:\n");
 		list->head = noCorr->next;
 		/*A funcao entry_destroy trata da libertacao de memoria das estruturas em niveis inferiores*/
 		entry_destroy(noCorr->data);
 		free(noCorr);
+		printf("SIZE LIST BEFORE DELETE: %d\n", list->size);
 		list->size = (list->size)-1;
-		printf("SIZE LIST: %d\n", list->size);
+		printf("SIZE LIST AFTER DELETE: %d\n", list->size);
 		return 0;
 	}
 
+	// procurar o no para ser removido
 	while(noCorr != NULL && strcmp(noCorr->data->key,key) != 0){
 		noAnt = noCorr;
 		noCorr = noCorr->next;
@@ -103,20 +104,21 @@ int list_remove(struct list_t *list, char *key){
 	if(noCorr == NULL){
 		return -1;
 	}
-
-	if(noCorr == list->tail){
+	// o no a apagar e a tail
+	else if(noCorr == list->tail){
+		// o no anterior passa a ser a tail e o proximo passa a ser nulo
 		list->tail = noAnt;
 		list->tail->next = NULL;
 		entry_destroy(noCorr->data);
 		free(noCorr);
 		list->size = (list->size)-1;
-		return 0;
+	} else {
+		// o no a apagar esta no meio da lista
+		noAnt->next = noCorr->next;
+		entry_destroy(noCorr->data);
+		free(noCorr);
+		list->size = (list->size)-1;
 	}
-
-	noAnt->next = noCorr->next;
-	entry_destroy(noCorr->data);
-	list->size = (list->size)-1;
-	free(noCorr);
 	return 0;
 }
 
