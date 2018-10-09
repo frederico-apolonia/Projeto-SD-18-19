@@ -7,19 +7,19 @@ OBJ_DIR  = object
 all: data.o entry.o list.o ; make test_data
 
 test: $(OBJ_DIR)/*.o
-        $(CC) -Wall -I $(INC_DIR) $(SRC_DIR)/test.c $(OBJ_DIR)/* -o $(BIN_DIR)/test
+	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/test.c $(OBJ_DIR)/* -o $(BIN_DIR)/test
 
 test_data: $(OBJ_DIR)/*.o
-	$(CC) -Wall -I $(INC_DIR) $(SRC_DIR)/test_data.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_data
+	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/test_data.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_data
 
 test_entry: $(OBJ_DIR)/*.o
-	$(CC) -Wall -I $(INC_DIR) $(OBJ_DIR)/test_entry.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_entry
+	$(CC) -g -Wall -I $(INC_DIR) $(OBJ_DIR)/test_entry.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_entry
 
 test_list: $(OBJ_DIR)/*.o
-	$(CC) -Wall -I $(INC_DIR) $(OBJ_DIR)/test_list.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_list
+	$(CC) -g -Wall -I $(INC_DIR) $(OBJ_DIR)/test_list.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_list
 
 test_table: $(OBJ_DIR)/*.o
-	$(CC) -Wall -I $(INC_DIR) $(OBJ_DIR)/test_table.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_table
+	$(CC) -g -Wall -I $(INC_DIR) $(OBJ_DIR)/test_table.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_table
 
 
 data.o: $(SRC_DIR) $(INC_DIR)
