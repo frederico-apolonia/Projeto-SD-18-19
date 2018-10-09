@@ -2,12 +2,11 @@
 #define _TABLE_PRIVATE_H
 
 #include "list.h"
-#include "list-private.h"
 
 struct table_t {
-    int size;
-    struct list_t **list;
-    
+	int size;
+	int numElems;
+	struct list_t **lists;
 };
 
 /* Função para criar/inicializar uma nova tabela hash, com n linhas 

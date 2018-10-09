@@ -6,6 +6,9 @@ OBJ_DIR  = object
 
 all: data.o entry.o list.o ; make test_data
 
+test: $(OBJ_DIR)/*.o
+        $(CC) -Wall -I $(INC_DIR) $(SRC_DIR)/test.c $(OBJ_DIR)/* -o $(BIN_DIR)/test
+
 test_data: $(OBJ_DIR)/*.o
 	$(CC) -Wall -I $(INC_DIR) $(SRC_DIR)/test_data.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_data
 

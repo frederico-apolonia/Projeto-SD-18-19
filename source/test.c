@@ -82,7 +82,7 @@ int main() {
     printf("%s\n",newList->head->data->key);
 
     printf("REMOCAO DE NOH---------------------\n\n");
-    list_remove(newList,conteudo3);
+    list_remove(newList,key3);
     list_print(newList);
     printf("Tamanho da lista: %d\n",newList->size);
     printf("REMOCAO DE NOH NAO EXISTENTE---------------------\n\n");
@@ -108,11 +108,28 @@ int main() {
     }
 
     struct table_t *tabela = table_create(2);
+    printf("TEST===========================111\n");
+    printf("SIZE TABLE: %d\n",tabela->size);
     table_put(tabela,key3,data3);
+      table_print(tabela);
+    printf("SIZE TABLE: %d\n",tabela->size);
+    printf("TEST===========================113\n");
     table_put(tabela,key5,data5);
+        table_print(tabela);
+    printf("SIZE TABLE: %d\n",tabela->size);
+    printf("TEST===========================115\n");
     table_put(tabela,key2,data2);
+        table_print(tabela);
+    printf("SIZE TABLE: %d\n",tabela->size);
+    printf("TEST===========================117\n");
     table_put(tabela,key4,data4);
+    table_print(tabela);
+    printf("SIZE TABLE: %d\n",tabela->size);
+    printf("TEST===========================119\n");
+    printf("SIZE TABLE: %d\n",tabela->size);
+    printf("Conteudo dentro de data: %s\n", data_teste->data);
     table_put(tabela,conteudo,data_teste);
+    printf("TEST===========================111\n");
     table_print(tabela);
     struct data_t *temp = table_get(tabela,key3);
     printf("%s\n",temp->data);
@@ -128,13 +145,13 @@ int main() {
     }
 
 
-    data_destroy(data_teste);
-    free(conteudo_data);
-    data_destroy(new_data_test);
-    data_destroy(data_dup);
+    //data_destroy(data_teste);
+  //  free(conteudo_data);
+    //data_destroy(new_data_test);
+  //  data_destroy(data_dup);
     //free(conteudo);
-    data_destroy(testData);
-    list_destroy(newList);
+  //  data_destroy(testData);
+  //  list_destroy(newList);
     /*free(conteudo2);
     free(conteudo3);
     free(conteudo4);
@@ -148,10 +165,10 @@ int main() {
     entry_destroy(newEntry3);
     entry_destroy(newEntry4);
     entry_destroy(newEntry5);*/
-    list_free_keys(keys);
-    entry_destroy(getEntry);
-    table_destroy(tabela);
-    data_destroy(temp);
-    table_free_keys(tablekeys);
+//    list_free_keys(keys);
+  //  entry_destroy(getEntry);
+  //  table_destroy(tabela);
+  //  data_destroy(temp);
+  //    table_free_keys(tablekeys);
     printf("FIN\n");
 }
