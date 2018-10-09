@@ -15,11 +15,6 @@ struct entry_t {
  */
 struct entry_t *entry_create(char *key, struct data_t *data);
 
-/* Função que inicializa os elementos de uma entrada na tabela com o
- * valor NULL.
- */
-void entry_initialize(struct entry_t *entry);
-
 /* Função que elimina uma entry, libertando a memória por ela ocupada
  */
 void entry_destroy(struct entry_t *entry);

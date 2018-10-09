@@ -15,11 +15,6 @@ struct entry_t *entry_create(char *key, struct data_t *data){
 	return newEntry;
 }
 
-void entry_initialize(struct entry_t *entry) {
-	entry->key = NULL;
-	entry->value = NULL;
-}
-
 void entry_destroy(struct entry_t *entry){
 	
 	if(entry->value != NULL){
