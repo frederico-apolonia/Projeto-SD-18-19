@@ -32,9 +32,6 @@ void list_destroy(struct list_t *list){
 
 int list_add(struct list_t *list, struct entry_t *entry){
 	//Caso a lista esteja vazia
-	if(list == NULL){
-		return -1;
-	}
 	if(list->head == NULL){
 		struct node_t *newNode = (struct node_t*)malloc(sizeof(struct node_t));
 		if(newNode == NULL){
@@ -43,58 +40,41 @@ int list_add(struct list_t *list, struct entry_t *entry){
 			newNode->data = entry;
 			newNode->next = NULL;
 			list->head = newNode;
-			list->tail = newNode;
 			list->size = (list->size)+1;
 			return 0;
 		}
 	}
 
-	struct node_t *noCorr = list->tail;
+	struct node_t *noCorr = list->head;
+	while(noCorr->next != NULL){
+		noCorr = noCorr->next;
+	}
 	/*Criacao de novo no*/
 	struct node_t *nextNode = (struct node_t*)malloc(sizeof(struct node_t));
 	if(nextNode == NULL){
 		return -1;
+	}else{
+		nextNode->data = entry;
+		nextNode->next = NULL;
+		/*Concatenacao do novo no ao ultimo elemento da lista corrente*/
+		list->size = (list->size)+1;
+		noCorr->next = nextNode;
+		return 0;
 	}
-	nextNode->data = entry;
-	nextNode->next = NULL;
-	/*Concatenacao do novo no ao ultimo elemento da lista corrente*/
-	list->size = (list->size)+1;
-	noCorr->next = nextNode;
-	list->tail = nextNode;
-	return 0;
 }
 
 int list_remove(struct list_t *list, char *key){
-	if(list == NULL || key == NULL){
-		return NULL;
-	}
-
 	struct node_t *noCorr = list->head, *noAnt;
 
-	// existe apenas 1 elemento na lista
-	if(list->size == 1 && (strcmp(noCorr->data->key,key) == 0)){
-		entry_destroy(noCorr->data);
-		free(noCorr);
-		list->head = NULL;
-		list->tail = NULL;
-		list->size = 0;
-		return 0;
-	}
-
-	// o no a remover e a head
 	if(noCorr != NULL && (strcmp(noCorr->data->key,key) == 0)){
-		printf("DELETING LIST HEAD:\n");
+		printf("REMOVE HEAD\n");
 		list->head = noCorr->next;
-		/*A funcao entry_destroy trata da libertacao de memoria das estruturas em niveis inferiores*/
-		entry_destroy(noCorr->data);
-		free(noCorr);
-		printf("SIZE LIST BEFORE DELETE: %d\n", list->size);
+	//	entry_destroy(noCorr->data);
+	//	free(noCorr);
 		list->size = (list->size)-1;
-		printf("SIZE LIST AFTER DELETE: %d\n", list->size);
 		return 0;
 	}
 
-	// procurar o no para ser removido
 	while(noCorr != NULL && strcmp(noCorr->data->key,key) != 0){
 		noAnt = noCorr;
 		noCorr = noCorr->next;
@@ -104,21 +84,11 @@ int list_remove(struct list_t *list, char *key){
 	if(noCorr == NULL){
 		return -1;
 	}
-	// o no a apagar e a tail
-	else if(noCorr == list->tail){
-		// o no anterior passa a ser a tail e o proximo passa a ser nulo
-		list->tail = noAnt;
-		list->tail->next = NULL;
-		entry_destroy(noCorr->data);
-		free(noCorr);
-		list->size = (list->size)-1;
-	} else {
-		// o no a apagar esta no meio da lista
-		noAnt->next = noCorr->next;
-		entry_destroy(noCorr->data);
-		free(noCorr);
-		list->size = (list->size)-1;
-	}
+
+	noAnt->next = noCorr->next;
+	entry_destroy(noCorr->data);
+	list->size = (list->size)-1;
+	free(noCorr);
 	return 0;
 }
 
