@@ -69,8 +69,8 @@ int list_remove(struct list_t *list, char *key){
 	if(noCorr != NULL && (strcmp(noCorr->data->key,key) == 0)){
 		printf("REMOVE HEAD\n");
 		list->head = noCorr->next;
-	//	entry_destroy(noCorr->data);
-	//	free(noCorr);
+		entry_destroy(noCorr->data);
+		free(noCorr);
 		list->size = (list->size)-1;
 		return 0;
 	}

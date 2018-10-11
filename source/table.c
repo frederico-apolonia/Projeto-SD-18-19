@@ -12,19 +12,24 @@ struct table_t *table_create(int n){
 	if(newTable == NULL){
 		return NULL;
 	}
-	if(n == 0){
+	if(n <= 0){
+		free(newTable);
 		return NULL;
 	}
 	newTable->size = n;
 	newTable->numElems = 0;
 	newTable->lists = (struct list_t**) malloc(sizeof(struct list_t**)*n);
 	if(newTable->lists == NULL){
+		free(newTable);
 		return NULL;
 	}
 	int i, j;
 	for(i = 0; i<n; i++){
 		newTable->lists[i] = list_create();
 		if(newTable->lists[i] == NULL){
+			/* Se alguma das criacoes falhar, ir as listas que ja foram criadas
+			 * e liberta-las.
+			 */
 			for(j = 0; j<i; j++){
 				list_destroy(newTable->lists[j]);
 			}
@@ -36,15 +41,16 @@ struct table_t *table_create(int n){
 
 void table_destroy(struct table_t *table){
 	int i;
+	// destruir as listas
 	for(i = 0; i < (table->size); i++){
 		list_destroy(table->lists[i]);
 	}
+	// libertar estrutura da tabela
 	free(table->lists);
 	free(table);
 }
 
 int table_put(struct table_t *table, char *key, struct data_t *value){
-    printf("SIZE TABLE (table.c): %d\n",table->size);
 	int hashIndex = hash(key,table->size);
 	struct entry_t *checkEntry = list_get(table->lists[hashIndex],key);
 	struct entry_t *newEntry = entry_create(key,value);
@@ -54,19 +60,18 @@ int table_put(struct table_t *table, char *key, struct data_t *value){
 	//Verificacao da existencia de uma mesma entrada
 	if(checkEntry != NULL){
 		//Remocao e adicao
-				    printf("SIZE TABLE (IF table.c): %d\n",table->size);
 		if(list_remove(table->lists[hashIndex],key) == -1){
 			free(checkEntry);
 			free(newEntry);
 			return -1;
 		}
-			   printf("SIZE TABLE (IF table.c): %d\n",table->size);
+		
 		if(list_add(table->lists[hashIndex],newEntry) == -1){
 			free(checkEntry);
 			free(newEntry);
 			return -1;
 		}
-		    printf("SIZE TABLE (IF table.c): %d\n",table->size);
+
 		return 0;
 
 	}else{
@@ -96,17 +101,17 @@ struct data_t *table_get(struct table_t *table, char *key){
 	}
 }
 
-int table_del(struct table_t *table, char *key){
-	int hashIndex = hash(key,table->size);
-	struct entry_t *entry = list_get(table->lists[hashIndex], key);
-	if(entry == NULL || table == NULL){
+int table_del(struct table_t *table, char *key) {
+	if(table == NULL || key == NULL) {
 		return -1;
-	}else{
-		//retira-se 1 ao total de elementos
-		table->numElems -= 1;
-		list_remove(table->lists[hashIndex],key);
-		return 0;
 	}
+	// calcula posicao da key
+	int hash_index = hash(key, table->size);
+	if(list_remove(table->lists[hash_index], key) == -1) {
+		return -1;
+	} 
+	table->numElems -= 1;
+	return 0;
 }
 
 int table_size(struct table_t *table){
@@ -115,7 +120,7 @@ int table_size(struct table_t *table){
 
 char **table_get_keys(struct table_t *table){
 	char **tableKeys = (char **) malloc((sizeof(char *)+1)*table_size(table));
-	char **currKeys;
+	char **currKeys; // chaves da lista a ser 'visitada'
 	//i -> contador das listas da table
 	//j -> contador do vetor de keys de uma lista
 	//k -> contador para o array final contendo todas as keys de todas as listas
