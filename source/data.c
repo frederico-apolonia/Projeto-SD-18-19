@@ -28,6 +28,7 @@ struct data_t *data_create2(int size, void *data){
 		free(newData);
 		return NULL;
 	}
+	free(newData -> data);
 	newData -> data = data;
 	/*
 	"Não. Para duplicar uma estrutura data usam a fução data_dup(). 
