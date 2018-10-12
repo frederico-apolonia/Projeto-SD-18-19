@@ -63,7 +63,7 @@ struct data_t *data_dup(struct data_t *data){
 		// memoria bem alocada
 		if (data->data == NULL) {
 			// se o data for nulo, nao existe nada para copiar
-			free(data_copy);
+			data_destroy(data_copy);
 			return NULL;
 		}
 		memcpy(data_copy->data, data->data, data->datasize);
