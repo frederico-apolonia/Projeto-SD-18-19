@@ -25,20 +25,11 @@ struct data_t *data_create(int size){
 struct data_t *data_create2(int size, void *data){
 	struct data_t *newData = data_create(size);
 	if(newData == NULL || data == NULL) {
-		free(newData);
+		data_destroy(newData);
 		return NULL;
 	}
 	free(newData -> data);
 	newData -> data = data;
-	/*
-	"Não. Para duplicar uma estrutura data usam a fução data_dup(). 
-	A função data_create2() apenas aloca memória para a estrutura, 
-	mas não para os dados apontados pelo campo data. 
-	Este campo fica com o ponteiro passado como parâmetro 
-	(e portanto esse ponteiro tem de apontar para uma zona de memória 
-	já alocada e com os dados) ."
-	
-	memcpy(newData->data, data, size);*/
 	return newData;
 }
 
