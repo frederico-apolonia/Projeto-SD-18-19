@@ -14,6 +14,10 @@ struct table_t {
  */
 struct table_t *table_create(int n);
 
+/* Função que imprime a tabela */
 void table_print(struct table_t *table);
+
+/* Função para calcular o hash da chave inserida */
+int hash(char* str, int size);
 
 #endif

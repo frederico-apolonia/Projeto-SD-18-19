@@ -148,10 +148,10 @@ void list_print(struct list_t* list){
 	}
 	while(noCorr != NULL){
 		if(noCorr->next != NULL){
-			printf("| Chave: %s | Valor: %s |   ===>  ",noCorr->data->key, noCorr->data->value->data);
+			printf("| Chave: %s | Valor: %s |   ===>  ",noCorr->data->key, (char*) noCorr->data->value->data);
 			noCorr = noCorr->next;
 		}else{
-			printf("| Chave: %s | Valor: %s |",noCorr->data->key, noCorr->data->value->data);
+			printf("| Chave: %s | Valor: %s |",noCorr->data->key, (char*) noCorr->data->value->data);
 			break;
 		}
 	}
