@@ -4,10 +4,7 @@ SRC_DIR  = source
 INC_DIR  = include
 OBJ_DIR  = object
 
-all: data.o entry.o list.o table.o
-
-test: $(OBJ_DIR)/*.o
-	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/test.c $(OBJ_DIR)/* -o $(BIN_DIR)/test
+all: data.o entry.o list.o table.o message.o
 
 test_data: $(OBJ_DIR)/*.o
 	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/test_data.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_data
@@ -22,7 +19,7 @@ test_table: $(OBJ_DIR)/*.o
 	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/test_table.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_table
 
 test_message: $(OBJ_DIR)/*.o
-	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/test_table.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_message
+	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/test_message.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_message
 
 data.o: $(SRC_DIR) $(INC_DIR)
 	$(CC) -c $(SRC_DIR)/data.c -I $(INC_DIR) -o $(OBJ_DIR)/data.o
