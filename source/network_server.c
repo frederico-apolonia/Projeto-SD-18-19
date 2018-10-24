@@ -1,12 +1,40 @@
 #include "message.h"
 #include "table_skel.h"
+#include "network_server.h"
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <unistd.h>
 
 /* Função para preparar uma socket de receção de pedidos de ligação
  * num determinado porto.
  * Retornar 0 (OK) ou -1 (erro).
  */
 int network_server_init(short port){
-	
+	int sockfd;
+	struct sockaddr_in server;
+
+	// creates TCP socket
+	if (sockfd = socket(AF_INET, SOCK_STREAM, 0) < 0) {
+		perror("Error while creating socket");
+		return -1;
+	}
+
+	// fills struct server with addresses to bind to the socket
+	server.sin_family = AF_INET;
+	server.sin_port = htons(atoi(port)); // TCP Port
+	server.sin_addr.s_addr = htonl(INADDR_ANY); // All machine addresses
+
+	//bind
+	if (bind(sockfd, (struct sockaddr *) &server, sizeof(server)) < 0) {
+		perror("Error while binding socket");
+		close(sockfd);
+		return -1;
+	}
+
+	// now that the socket is created and binded, return
+	return sockfd;
 }
 
 /* Esta função deve:
