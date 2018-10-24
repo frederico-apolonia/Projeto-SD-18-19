@@ -21,6 +21,8 @@ test_list: $(OBJ_DIR)/*.o
 test_table: $(OBJ_DIR)/*.o
 	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/test_table.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_table
 
+test_message: $(OBJ_DIR)/*.o
+	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/test_table.c $(OBJ_DIR)/* -o $(BIN_DIR)/test_message
 
 data.o: $(SRC_DIR) $(INC_DIR)
 	$(CC) -c $(SRC_DIR)/data.c -I $(INC_DIR) -o $(OBJ_DIR)/data.o
@@ -33,6 +35,9 @@ list.o: $(SRC_DIR) $(INC_DIR)
 
 table.o: $(SRC_DIR) $(INC_DIR)
 	$(CC) -c $(SRC_DIR)/table.c -I $(INC_DIR) -o $(OBJ_DIR)/table.o
+
+message.o: $(SRC_DIR) $(INC_DIR)
+	$(CC) -c $(SRC_DIR)/message.c -I $(INC_DIR) -o $(OBJ_DIR)/message.o
 
 clean:
 	rm -f ./$(OBJ_DIR)/*.o
