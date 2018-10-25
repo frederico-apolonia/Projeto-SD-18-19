@@ -46,18 +46,53 @@ int network_server_init(short port){
  */
 int network_main_loop(int listening_socket){
 
+	if  (listening_socket < 0) {
+		return -1;
+	}
 
-	while((socket_de_cliente = accept(listening_socket) != -1)){
-		if (socket_de_cliente tem dados para ler) {
-			nbytes = read_all(socket_de_cliente, buffer, …);
-			if(read returns 0 bytes) {
-				/* sinal de que a conexão foi fechada pelo cliente */
-				close(socket_de_cliente);
+	struct sockaddr_in client;
+	socklen_t size_client;
+	int client_socket, msg_size, result, size_to_client;
+	char* buffer;
+	struct message_t* message, *ans_message;
+
+	while((client_socket = accept(listening_socket, (struct sockaddr *) &client, &size_client)) != -1){
+		// reads message size from client
+		msg_size = ntohl(read(listening_socket, msg_size, sizeof(int)));
+		if (msg_size > 0) {
+			if ((buffer = malloc(msg_size) == NULL)) {
+				// if malloc failed
+				close(listening_socket);
+				perror("Malloc failed");
+				return -1;
+			}
+
+			if(result = read_all(client_socket, buffer, msg_size) != msg_size) {
+				/* sinal de que a conexão foi fechada pelo cliente
+				 * ou ficaram bytes perdidos
+				 */
+				close(listening_socket);
+				free(buffer);
+				perror("Reading client buffer failed");
+				return -1;
 			} else {/* processamento da requisição e da resposta */
-				message = buffer_to_message(buffer);
-				msg_out = invoke(message);
-				buffer = message_to_buffer(msg_out);
-				write_all(socket_de_cliente, buffer, …);
+				message = buffer_to_message(buffer, msg_size);
+				if (result = invoke(message) == -1) {
+					close(listening_socket);
+					free(buffer);
+					free_message(message);
+				}
+				// sends msg_size to client
+				msg_size = message_to_buffer(ans_message, buffer);
+				size_to_client = htonl(msg_size);
+				if (result = write_all(listening_socket, size_to_client, sizeof(int) != sizeof(int))) {
+					close(listening_socket);
+					free(buffer);
+					free_message(message);
+					perror("Failed while writing message size");
+					return -1;
+				}
+
 			}
 		}
 		
@@ -91,5 +126,5 @@ int network_send(int client_socket, struct message_t *msg){
  * network_server_init().
  */
 int network_server_close(){
-	
+
 }
