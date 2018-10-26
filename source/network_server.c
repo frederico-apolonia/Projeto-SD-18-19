@@ -52,56 +52,24 @@ int network_main_loop(int listening_socket){
 
 	struct sockaddr_in client;
 	socklen_t size_client;
-	int client_socket, msg_size, result, size_to_client;
-	char* buffer;
-	struct message_t* message, *ans_message;
+	int client_socket, result;
+	struct message_t* message;
 
 	while((client_socket = accept(listening_socket, (struct sockaddr *) &client, &size_client)) != -1){
-		// reads message size from client
-		msg_size = ntohl(read(listening_socket, msg_size, sizeof(int)));
-		if (msg_size > 0) {
-			if ((buffer = malloc(msg_size) == NULL)) {
-				// if malloc failed
-				close(listening_socket);
-				perror("Malloc failed");
-				return -1;
-			}
-
-			if(result = read_all(client_socket, buffer, msg_size) != msg_size) {
-				/* sinal de que a conexão foi fechada pelo cliente
-				 * ou ficaram bytes perdidos
-				 */
-				close(listening_socket);
-				free(buffer);
-				perror("Reading client buffer failed");
-				return -1;
-			} else {/* processamento da requisição e da resposta */
-				message = buffer_to_message(buffer, msg_size);
-				if (result = invoke(message) == -1) {
-					close(listening_socket);
-					free(buffer);
-					free_message(message);
+		// reads message from client
+		if (message = network_receive(client_socket) != NULL) {
+			// invoke will update message, returns -1 if something fails
+			if (result = invoke(message) == -1) {
+				free_message(message);
+			} else {
+				if (result = network_send(client_socket, message) != -1) {
+					printf("Message was successfuly processed and sent to client");
 				}
-				// sends msg_size to client
-				msg_size = message_to_buffer(ans_message, buffer);
-				size_to_client = htonl(msg_size);
-				if (result = write_all(listening_socket, size_to_client, sizeof(int) != sizeof(int))) {
-					close(listening_socket);
-					free(buffer);
-					free_message(message);
-					perror("Failed while writing message size");
-					return -1;
-				}
-
 			}
 		}
-		
-		if (socket_de_cliente com erro) {
-			close(socket_de_cliente);
-		}
-	}
-
-	
+		// close connection with client
+		close(client_socket);
+	}	
 }
 
 /* Esta função deve:
@@ -110,7 +78,32 @@ int network_main_loop(int listening_socket){
  *   reservando a memória necessária para a estrutura message_t.
  */
 struct message_t *network_receive(int client_socket){
-	
+	struct message_t *message = NULL;
+	int result, msg_size;
+	char *buffer;
+
+	msg_size = ntohl(read(client_socket, msg_size, sizeof(int)));
+	if (msg_size > 0) {
+		if ((buffer = malloc(msg_size) == NULL)) {
+			// if malloc failed
+			perror("Malloc failed");
+			return NULL;
+		}
+
+		if(result = read_all(client_socket, buffer, msg_size) != msg_size) {
+			/* sinal de que a conexão foi fechada pelo cliente
+			* ou ficaram bytes perdidos
+			*/
+			free(buffer);
+			perror("Reading client buffer failed");
+			return NULL;
+		} else {/* processamento da requisição e da resposta */
+			message = buffer_to_message(buffer, msg_size);
+			free(buffer);
+			return message;
+		}
+	}
+	return NULL;
 }
 
 /* Esta função deve:
@@ -118,8 +111,33 @@ struct message_t *network_receive(int client_socket){
  * - Libertar a memória ocupada por esta mensagem;
  * - Enviar a mensagem serializada, através do client_socket.
  */
-int network_send(int client_socket, struct message_t *msg){
-	
+int network_send(int client_socket, struct message_t *msg) {
+	int msg_size, size_to_client, function_result;
+	char** buffer = NULL;
+
+	if(msg_size = message_to_buffer(msg, &buffer) < 0 ) {
+		perror("MESSAGE SERIALIZATION FAILED");
+		free(buffer);
+		return -1;
+	}
+	// sends message size to client
+	size_to_client = htonl(msg_size);
+	if (function_result = write(client_socket, size_to_client, sizeof(int) != sizeof(int))) {
+		free(buffer);
+		free_message(msg);
+		perror("SEND MESSAGE SIZE TO CLIENT FAILED");
+		return -1;
+	}
+	// sends message to client
+	if (function_result = write(client_socket, buffer, msg_size) != msg_size) {
+		perror("SEND MESSAGE TO CLIENT FAILED");
+		free(buffer);
+		free_message(msg);
+		return -1;
+	}
+	free(buffer);
+	free_message(msg);
+	return 0;
 }
 
 /* A função network_server_close() fecha a ligação estabelecida por
