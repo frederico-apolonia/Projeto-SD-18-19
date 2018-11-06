@@ -8,3 +8,8 @@ struct rtable_t{
 	struct sockaddr_in sockaddr;
 	int sockfd;
 };
+
+/* Funcao que separar uma string em varios tokens separados por
+ * seperator. Guarda o numero de tokens em counter
+ */
+char** tokenizer(char* string, char* seperator, int* counter);

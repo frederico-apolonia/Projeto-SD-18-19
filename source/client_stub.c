@@ -19,6 +19,30 @@ int get_num_keys(char** keys) {
 	return i;
 }
 
+/* Funcao que separar uma string em varios tokens separados por
+ * seperator. Guarda o numero de tokens em counter
+ */
+char** tokenizer(char* string, char* seperator, int* counter) {
+	*counter = 0;
+	char** result = (char**) malloc(sizeof(char*));
+	char* tmp = strtok(string, seperator);
+
+
+	while(1 == 1) {
+		result = realloc(result, (sizeof(char*) * (*counter + 1)));
+		result[*counter] = tmp;
+		tmp = strtok(NULL, seperator);
+		if(tmp == NULL) {
+			break;
+		}
+		*counter += 1;
+	}
+
+	*counter += 1;
+
+	return result;
+}
+
 /* FunÃ§Ã£o para estabelecer uma associaÃ§Ã£o entre o cliente e uma tabela no
  * servidor.
  * address_port Ã© uma string no formato <hostname>:<port>.
@@ -26,27 +50,28 @@ int get_num_keys(char** keys) {
  */
 struct rtable_t *rtables_connect(const char *address_port){
 	int sockfd;
-	int address_port_len = strlen(address_port)+1;
 	struct rtable_t* rtable;
-	//printf("STRLEN ADDR PORT: %d\n", address_port_len);
-	char* input = (char *) malloc(address_port_len);
-	strncpy(input, address_port, address_port_len);
+	int size_adr_port;
 	//Divide a string em dois para se obter o hostname em hostname e o port em port_string
-	char* ip = strtok(input, ":");
-	char* port = strtok(NULL, ":");
+	char** address_tokenized = tokenizer(strdup(address_port), ":", &size_adr_port);
+
+	if(size_adr_port != 2) {
+		printf("Table-client must be invoked like this:\n");
+		printf("./table-client <ip>:<port>\n");
+		return NULL;
+	}
 
 	if ((rtable = malloc(sizeof(struct rtable_t))) == NULL) {
 		return NULL;
 	}
-	rtable->ip = ip;
-	rtable->port = port;
+	rtable->ip = address_tokenized[0];
+	rtable->port = address_tokenized[1];
 
 	if((network_connect(rtable)) == -1 ) {
 		free(rtable);
 		return NULL;
 	}
 
-	free(input);
 	return rtable;
 }
 
@@ -78,14 +103,14 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry){
 	msg_pedido->opcode = OP_PUT;
 	msg_pedido->c_type = CT_ENTRY;
 	msg_pedido->content.entry = entry_dup(entry);
-	
+
 	msg_resposta = network_send_receive(rtable,msg_pedido);
 	free_message(msg_pedido);
 	if (msg_resposta == NULL || (msg_resposta->opcode) == OP_ERROR){
 		free_message(msg_resposta);
 		return -1;
 	}
-	
+
 	free_message(msg_resposta);
 	return 0;
 }
@@ -143,7 +168,7 @@ int rtable_del(struct rtable_t *rtable, char *key){
 		free(msg_pedido);
 		return -1;
 	}
-	
+
 	strncpy(msg_pedido->content.key, key, strlen(key)+1);
 
 	msg_resposta = network_send_receive(rtable,msg_pedido);
