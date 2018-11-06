@@ -36,7 +36,7 @@ int network_send(int client_socket, struct message_t *msg);
 /* A função network_server_close() liberta os recursos alocados por
  * network_server_init().
  */
-int network_server_close();
+int network_server_close(int listening_socket);
 
 
 #endif

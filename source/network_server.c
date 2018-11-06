@@ -1,29 +1,35 @@
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "message.h"
 #include "table_skel.h"
 #include "network_server.h"
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <unistd.h>
+#include "read_write.h"
+#include "message-private.h"
 
 /* Função para preparar uma socket de receção de pedidos de ligação
  * num determinado porto.
- * Retornar 0 (OK) ou -1 (erro).
+ * Retornar o descritor do socket (OK) ou -1 (erro).
  */
 int network_server_init(short port){
 	int sockfd;
 	struct sockaddr_in server;
-
 	// creates TCP socket
-	if (sockfd = socket(AF_INET, SOCK_STREAM, 0) < 0) {
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("Error while creating socket");
 		return -1;
 	}
 
 	// fills struct server with addresses to bind to the socket
 	server.sin_family = AF_INET;
-	server.sin_port = htons(atoi(port)); // TCP Port
+	server.sin_port = htons(port); // TCP Port
 	server.sin_addr.s_addr = htonl(INADDR_ANY); // All machine addresses
 
 	//bind
@@ -32,6 +38,12 @@ int network_server_init(short port){
 		close(sockfd);
 		return -1;
 	}
+	// listening socket
+	if (listen(sockfd, 0) < 0){
+        perror("Erro ao executar listen");
+        close(sockfd);
+        return -1;
+    }
 
 	// now that the socket is created and binded, return
 	return sockfd;
@@ -52,24 +64,41 @@ int network_main_loop(int listening_socket){
 
 	struct sockaddr_in client;
 	socklen_t size_client;
-	int client_socket, result;
-	struct message_t* message;
+	int client_socket;
+	int msg_process_result, send_msg_result;
+	int result;
+	char cmessage;
 
-	while((client_socket = accept(listening_socket, (struct sockaddr *) &client, &size_client)) != -1){
-		// reads message from client
-		if (message = network_receive(client_socket) != NULL) {
-			// invoke will update message, returns -1 if something fails
-			if (result = invoke(message) == -1) {
-				free_message(message);
-			} else {
-				if (result = network_send(client_socket, message) != -1) {
-					printf("Message was successfuly processed and sent to client");
+	printf("Server is waiting for a new connection...\n");
+	while ((client_socket = accept(listening_socket, (struct sockaddr *) &client, &size_client)) != -1){
+		printf("New client connection\n");
+		while(result = recv(client_socket, &cmessage, sizeof(char), MSG_PEEK)) {
+			struct message_t* message;
+			// reads message from client
+			if ((message = network_receive(client_socket)) != NULL) {
+				printf("New message received from the client...\n");
+				print_message(message); // for debugging purposes
+				// invoke will update message, returns -1 if something fails
+				msg_process_result = invoke(message);
+				if (msg_process_result == -1) {
+					printf("There was an error while processing the current message\n");
+					build_error_message(message);
+				}
+				printf("Message that is going to be sent to the client:\n");
+				print_message(message);
+				if ((send_msg_result = network_send(client_socket, message)) != -1) {
+					printf("Message was successfuly processed and sent to client\n");
+				} else {
+					printf("There was an error while sending this message to the client.\n");
 				}
 			}
 		}
-		// close connection with client
+		printf("Goodbye, client!\n");
 		close(client_socket);
-	}	
+	}
+	perror("Error from client socket");
+	printf("Client socket: %d\n", client_socket);
+	return 0;
 }
 
 /* Esta função deve:
@@ -78,31 +107,22 @@ int network_main_loop(int listening_socket){
  *   reservando a memória necessária para a estrutura message_t.
  */
 struct message_t *network_receive(int client_socket){
-	struct message_t *message = NULL;
-	int result, msg_size;
+	struct message_t *message;
+	int result;
 	char *buffer;
 
-	msg_size = ntohl(read(client_socket, msg_size, sizeof(int)));
-	if (msg_size > 0) {
-		if ((buffer = malloc(msg_size) == NULL)) {
-			// if malloc failed
-			perror("Malloc failed");
-			return NULL;
-		}
-
-		if(result = read_all(client_socket, buffer, msg_size) != msg_size) {
-			/* sinal de que a conexão foi fechada pelo cliente
-			* ou ficaram bytes perdidos
-			*/
-			free(buffer);
-			perror("Reading client buffer failed");
-			return NULL;
-		} else {/* processamento da requisição e da resposta */
-			message = buffer_to_message(buffer, msg_size);
-			free(buffer);
-			return message;
-		}
+	result = read_all(client_socket, &buffer);
+	if(result < 0) {
+		/* ocorreu um erro a ler a resposta */
+		free(buffer);
+		perror("Reading client buffer failed");
+		return NULL;
+	} else {/* processamento da requisição e da resposta */
+		message = buffer_to_message(buffer, result);
+		free(buffer);
+		return message;
 	}
+
 	return NULL;
 }
 
@@ -112,37 +132,30 @@ struct message_t *network_receive(int client_socket){
  * - Enviar a mensagem serializada, através do client_socket.
  */
 int network_send(int client_socket, struct message_t *msg) {
-	int msg_size, size_to_client, function_result;
-	char** buffer = NULL;
+	int msg_size = 0, size_to_client, function_result;
+	char* buffer;
 
-	if(msg_size = message_to_buffer(msg, &buffer) < 0 ) {
+	if((msg_size = message_to_buffer(msg, &buffer)) < 0 ) {
 		perror("MESSAGE SERIALIZATION FAILED");
 		free(buffer);
 		return -1;
 	}
-	// sends message size to client
-	size_to_client = htonl(msg_size);
-	if (function_result = write(client_socket, size_to_client, sizeof(int) != sizeof(int))) {
-		free(buffer);
-		free_message(msg);
-		perror("SEND MESSAGE SIZE TO CLIENT FAILED");
-		return -1;
-	}
+	
+	free_message(msg);
 	// sends message to client
-	if (function_result = write(client_socket, buffer, msg_size) != msg_size) {
+	if ((function_result = write(client_socket, buffer, msg_size)) != msg_size) {
 		perror("SEND MESSAGE TO CLIENT FAILED");
 		free(buffer);
 		free_message(msg);
 		return -1;
 	}
 	free(buffer);
-	free_message(msg);
-	return 0;
+	return function_result;
 }
 
 /* A função network_server_close() fecha a ligação estabelecida por
  * network_server_init().
  */
-int network_server_close(){
-
+int network_server_close(int listening_socket){
+	close(listening_socket);
 }

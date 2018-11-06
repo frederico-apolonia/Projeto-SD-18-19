@@ -26,6 +26,7 @@ void print_message(struct message_t *msg) {
 		}break;
 		case CT_VALUE:{
 			printf("datasize: %d\n", msg->content.value->datasize);
+			printf("data: %s\n", msg->content.value->data);
 		}break;
 		case CT_RESULT:{
 			printf("result: %d\n", msg->content.result);

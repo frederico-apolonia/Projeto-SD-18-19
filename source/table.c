@@ -87,14 +87,20 @@ int table_put(struct table_t *table, char *key, struct data_t *value){
 }
 
 struct data_t *table_get(struct table_t *table, char *key){
+	if(table == NULL) {
+		printf("TABLE IS NULL!\n");
+		return NULL;
+	}
 	int hashIndex = hash(key,table->size);
 	struct entry_t *entry = list_get(table->lists[hashIndex],key);
 	if(entry == NULL || entry->value == NULL){
+		printf("ENTRY ERRO\n");
 		return NULL;
 	}
 
 	struct data_t *newData = data_dup(entry->value);
 	if(newData == NULL){
+		printf("NEW DATA ERRO!\n");
 		return NULL;
 	}else{
 		return newData;

@@ -3,63 +3,52 @@
    Uso: table-server <port> <n_lists>
    Exemplo de uso: ./table_server 54321 6
 */
+#include <stdlib.h>
+#include <stdio.h>
 #include <error.h>
+#include <errno.h>
 
-#include "netwrok_server.h"
+#include "network_server.h"
 #include "table_skel.h"
 
+struct table_t * server_table;
 
 int main(int argc, char **argv){
 
+	unsigned short server_port;
+	int listening_socket;
+	int n_lists, table_init_result;
+
 	/* Testar os argumentos de entrada */
-
-	/* inicialização da camada de rede */
-	socket_de_escuta = network_server_init(/* */)
-	
-	table_skel_init(n_lists);
-	
-	int result = network_main_loop(socket_de_escuta)
-	
-	table_skel_destroy();
-}
-	
-	
-	
-	
-	
-
-	/**************************************************************************/
-	/* socket_de_escuta = socket(…);                                          */
-	/* bind(socket_de_escuta, porto obtido na linha de comando);              */
-	/* listen(socket_de_escuta);                                              */
-	/**************************************************************************/
-	if ((listening_socket = make_server(atoi(argv[1]))) < 0) return -1;
-
-	/**************************************************************************/
-	/* Criar a tabela hash de acordo com n_lists passada na linha de comandos */
-	/**************************************************************************/
-	table_skel_init();
-
-	while((socket_de_cliente = accept(listening_socket) != -1)){
-		if (socket_de_cliente tem dados para ler) {
-			nbytes = read_all(socket_de_cliente, buffer, …);
-			if(read returns 0 bytes) {
-				/* sinal de que a conexão foi fechada pelo cliente */
-				close(socket_de_cliente);
-			} else {/* processamento da requisição e da resposta */
-				message = buffer_to_message(buffer);
-				msg_out = invoke(message);
-				buffer = message_to_buffer(msg_out);
-				write_all(socket_de_cliente, buffer, …);
-			}
-		}
-		
-		if (socket_de_cliente com erro) {
-			close(socket_de_cliente);
-		}
+	/* testar se o numero de argumentos esta correto */
+	if (argc != 3) {
+		printf("Usage: table-server <port> <n_lists>\n");
+		printf("Exemple: ./table_server 54321 6\n");
+		return -1;
 	}
 
-	table_skel_destroy();
+	server_port = atoi(argv[1]);
+	n_lists = atoi(argv[2]);
+	if (server_port <= 1024 || server_port > 65535) {
+		perror("Server port must be higher than 1024 and lower than 65535");
+		return -1;
+	}
+	if (n_lists <= 0) {
+		perror("Number of lists must be larger than 0");
+		return -1;
+	} 
 
-}
+	/* inicialização da camada de rede */
+	listening_socket = network_server_init(server_port);
+	/* inicializacao da tabela e respetivas listas */
+	if((table_init_result = table_skel_init(n_lists)) == -1) {
+		return -1;
+	}
+	printf("Criou %d tabelas..\n", n_lists);
+
+	/* server loop */
+	network_main_loop(listening_socket);
 	
+	table_skel_destroy();
+	network_server_close(listening_socket);
+}

@@ -67,7 +67,6 @@ int list_remove(struct list_t *list, char *key){
 	struct node_t *noCorr = list->head, *noAnt;
 
 	if(noCorr != NULL && (strcmp(noCorr->data->key,key) == 0)){
-		printf("REMOVE HEAD\n");
 		list->head = noCorr->next;
 		entry_destroy(noCorr->data);
 		free(noCorr);
@@ -119,7 +118,6 @@ char **list_get_keys(struct list_t *list){
 	while(noCorr != NULL){
 		listKeys[i] = (char *) malloc(sizeof(noCorr->data->key));
 		strcpy(listKeys[i], noCorr->data->key);
-		printf("VALOR EM LIST KEYS[i]: %s\n",listKeys[i]);
 		noCorr = noCorr->next;
 		i++;
 	}
@@ -130,8 +128,6 @@ char **list_get_keys(struct list_t *list){
 void list_free_keys(char **keys){
 	int i = 0;
 	while(keys[i] != NULL){
-		printf("%d\n",i);
-		printf("LIBERTA : %s\n",keys[i]);
 		free(keys[i]);
 		i++;
 	}
