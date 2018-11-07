@@ -76,18 +76,18 @@ int main(int argc, char **argv){
 		   comando fgets, o carater \n é incluido antes do \0.
 		   Convém retirar o \n substituindo-o por \0.
 		*/
+		int num_params;
+		char** input_tokens;
 		fgets(input_utilizador, MAX_MSG, stdin);
 		//substituir \n por \0
 		input_utilizador[strcspn(input_utilizador, "\n")] = 0;
-
-		char* string_op_user = strtok(input_utilizador, splitter);
-		int op_user = command_to_code(string_op_user);
+		input_tokens = tokenizer(input_utilizador, splitter, &num_params);
+		int op_user = command_to_code(input_tokens[0]);
 		// quit command
 		if(op_user == 0) {
 			break;
 		}
-		char* parametro_comando;
-		char* parametro_comando_2;
+		
 		int size = 0;
 
 		char** listgetKeys;
@@ -101,15 +101,15 @@ int main(int argc, char **argv){
 				break;
 			case OP_DEL:
 				//input esperado pelo utilizador para esta operacao:Ex: "del <key>"
-				//vai ler o segundo valor inserido pelo utilizador no stdin
-				parametro_comando = strtok(NULL, splitter);
-				printf("%s\n", parametro_comando);
-				if (parametro_comando == NULL){
-					perror("O parametro inserido eh invalido");	
+				//vai comparar o numero de argumentos inseridos  pelo utilizador
+				if(num_params != 2) {
+					printf("ERROR: Input must be like:\n");
+					printf("'del <key>'\n");
 					break;
 				}
-				if (rtable_del(rtable, parametro_comando) == 0){
-						printf("O elemento %s foi bem eliminado\n", parametro_comando);
+				
+				if (rtable_del(rtable, input_tokens[1]) == 0){
+						printf("O elemento %s foi bem eliminado\n", input_tokens[1]);
 				}else{
 						printf("O elemento nao foi eliminado (key not found ou problemas)\n");
 				}
@@ -117,15 +117,15 @@ int main(int argc, char **argv){
 			case OP_GET:
 				//input esperado pelo utilizador para esta operacao:Ex: "get <key>"
 				//vai ler o segundo valor inserido pelo utilizador no stdin
-				parametro_comando = strtok(NULL, splitter);
-				if (parametro_comando == NULL){
-					perror("O parametro inserido eh invalido");	
+				if(num_params != 2) {
+					printf("ERROR: Input must be like:\n");
+					printf("'get <key>'\n");
 					break;
 				}
 
-				data_result = rtable_get(rtable,parametro_comando);
+				data_result = rtable_get(rtable,input_tokens[1]);
 				if (data_result == NULL){
-					printf("Erro ao obter o elemento com a key %s\n", parametro_comando);
+					printf("Erro ao obter o elemento com a key %s\n", input_tokens[1]);
 				}else{
 					printf("O elemento foi obtido com sucesso\n");
 					print_data_struct(data_result);
@@ -134,33 +134,30 @@ int main(int argc, char **argv){
 				break;
 			case OP_PUT:
 				//input esperado pelo utilizador para esta operacao: Ex: "put <key> <data>" (OP_CODE,key,elemento_para_data_t)
-				//vai ler o segundo valor inserido pelo utilizador no stdin
-				parametro_comando = strdup(strtok(NULL, splitter));
-				//vai ler o terceiro valor inserido pelo utilizador no stdin
-				parametro_comando_2 = strdup(strtok(NULL, splitter));
-				//Verificar se os parametros inseridos sao != NULL
-				if (parametro_comando == NULL || parametro_comando_2 == NULL){
-					perror("O(s) parametro(s) inserido(s) eh invalido");	
-					break;					
+				if(num_params != 3) {
+					printf("ERROR: Input must be like:\n");
+					printf("'put <key> <value>'\n");
+					break;
 				}
 		
-				data_result = data_create2(strlen(parametro_comando_2)+1, strdup(parametro_comando_2));
+				data_result = data_create2(strlen(input_tokens[2]), strdup(input_tokens[2]));
 				if (data_result == NULL){
 					perror("Erro ao criar data_t");
 					break;
 				}
-				entry_result = entry_create(parametro_comando,data_result);
+				print_data_struct(data_result);
+				entry_result = entry_create(strdup(input_tokens[1]),data_result);
 				if (entry_result == NULL){
 					data_destroy(data_result);
 					perror("Erro ao criar entry_t");
 					break;						
 				}
 				if (rtable_put(rtable,entry_result) == 0){
-					printf("O elemento %s foi inserido com sucesso\n", parametro_comando);						
+					printf("O elemento %s foi inserido com sucesso\n", input_tokens[1]);						
 				}else{
-					printf("Problemas ao inserir o elemento %s\n",parametro_comando);
+					printf("Problemas ao inserir o elemento %s\n",input_tokens[1]);
 				}
-				entry_destroy(entry_result);
+
 				break;
 			case OP_GETKEYS:
 				listgetKeys = rtable_get_keys(rtable);

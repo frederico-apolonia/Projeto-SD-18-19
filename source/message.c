@@ -93,25 +93,30 @@ int buffer_entry(struct message_t *msg, char **msg_buff) {
 	memcpy(*msg_buff+6+keysize, &ds2, 4);
 	memcpy(*msg_buff+6+keysize+4, encData, datasize);
 	free(encData);*/
-	
+	print_message(msg);
 	short keysize = strlen(msg->content.entry->key);
-	int datasize = msg->content.entry->value->datasize - 1;
-	int size = 2+2+2+keysize+4+datasize;
-	*msg_buff = (char *)malloc(size);
+	int datasize = msg->content.entry->value->datasize;
+
+	int size = sizeof(msg->opcode) + sizeof(msg->c_type) + sizeof(keysize) + keysize+sizeof(datasize) + datasize;
+	*msg_buff = (char *) malloc(size);
 	if(*msg_buff == NULL){
 		return -1;
 	}
 	
 	short opcode = htons(msg->opcode);
 	memcpy(*msg_buff, &opcode, 2);
+
 	short ctype = htons(msg->c_type);
 	memcpy(*msg_buff+2, &ctype, 2);
+
 	short ks2 = htons(keysize);
 	memcpy(*msg_buff+4, &ks2, 2);
 	memcpy(*msg_buff+6, msg->content.entry->key, keysize);
+
 	int ds2 = htonl(datasize);
 	memcpy(*msg_buff+6+keysize, &ds2, 4);
 	strncpy(*msg_buff+6+keysize+4, msg->content.entry->value->data, datasize);
+	
 	return size;
 }
 
@@ -275,6 +280,7 @@ int msg_entry(struct message_t *msg, char *msg_buff){
 	memcpy(&datasize, msg_buff+buffCount, 4);
 	buffCount += 4;
 	
+	// +1 for \0
 	char *val = malloc(ntohl(datasize)+1);
 	if(val == NULL){
 		free(key);
@@ -285,7 +291,7 @@ int msg_entry(struct message_t *msg, char *msg_buff){
 	val[strlen(val)] = '\0';
 	buffCount += ntohl(datasize);
 
-	struct data_t *newData = data_create2(ntohl(datasize)+1, strdup(val));
+	struct data_t *newData = data_create2(ntohl(datasize), val);
 	if(newData == NULL){
 		free(key);
 		free(val);

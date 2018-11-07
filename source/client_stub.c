@@ -102,8 +102,8 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry){
 	}
 	msg_pedido->opcode = OP_PUT;
 	msg_pedido->c_type = CT_ENTRY;
-	msg_pedido->content.entry = entry_dup(entry);
-
+	msg_pedido->content.entry = entry;
+	
 	msg_resposta = network_send_receive(rtable,msg_pedido);
 	free_message(msg_pedido);
 	if (msg_resposta == NULL || (msg_resposta->opcode) == OP_ERROR){
