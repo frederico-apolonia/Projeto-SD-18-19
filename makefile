@@ -43,37 +43,37 @@ server-lib.o:
 
 
 data.o: $(SRC_DIR) $(INC_DIR)
-	$(CC) -c $(SRC_DIR)/data.c -I $(INC_DIR) -o $(OBJ_DIR)/data.o
+	$(CC) -g -c $(SRC_DIR)/data.c -I $(INC_DIR) -o $(OBJ_DIR)/data.o
 
 entry.o: $(SRC_DIR) $(INC_DIR)
-	$(CC) -c $(SRC_DIR)/entry.c -I $(INC_DIR) -o $(OBJ_DIR)/entry.o
+	$(CC) -g -c $(SRC_DIR)/entry.c -I $(INC_DIR) -o $(OBJ_DIR)/entry.o
 
 list.o: $(SRC_DIR) $(INC_DIR)
-	$(CC) -c $(SRC_DIR)/list.c -I $(INC_DIR) -o $(OBJ_DIR)/list.o
+	$(CC) -g -c $(SRC_DIR)/list.c -I $(INC_DIR) -o $(OBJ_DIR)/list.o
 
 table.o: $(SRC_DIR) $(INC_DIR)
-	$(CC) -c $(SRC_DIR)/table.c -I $(INC_DIR) -o $(OBJ_DIR)/table.o
+	$(CC) -g -c $(SRC_DIR)/table.c -I $(INC_DIR) -o $(OBJ_DIR)/table.o
 
 message.o: $(SRC_DIR) $(INC_DIR)
-	$(CC) -c $(SRC_DIR)/message.c -I $(INC_DIR) -o $(OBJ_DIR)/message.o
+	$(CC) -g -c $(SRC_DIR)/message.c -I $(INC_DIR) -o $(OBJ_DIR)/message.o
 
 client_stub.o: $(SRC_DIR) $(INC_DIR)
-	$(CC) -c $(SRC_DIR)/client_stub.c -I $(INC_DIR) -o $(OBJ_DIR)/client_stub.o
+	$(CC) -g -c $(SRC_DIR)/client_stub.c -I $(INC_DIR) -o $(OBJ_DIR)/client_stub.o
 
 network_client.o: $(SRC_DIR) $(INC_DIR)
-	$(CC) -c $(SRC_DIR)/network_client.c -I $(INC_DIR) -o $(OBJ_DIR)/network_client.o
+	$(CC) -g -c $(SRC_DIR)/network_client.c -I $(INC_DIR) -o $(OBJ_DIR)/network_client.o
 
 read_write.o: $(SRC_DIR) $(INC_DIR)
-	$(CC) -c $(SRC_DIR)/read_write.c -I $(INC_DIR) -o $(OBJ_DIR)/read_write.o
+	$(CC) -g -c $(SRC_DIR)/read_write.c -I $(INC_DIR) -o $(OBJ_DIR)/read_write.o
 
 table_skel.o: $(SRC_DIR) $(INC_DIR)
-	$(CC) -c $(SRC_DIR)/table_skel.c -I $(INC_DIR) -o $(OBJ_DIR)/table_skel.o
+	$(CC) -g -c $(SRC_DIR)/table_skel.c -I $(INC_DIR) -o $(OBJ_DIR)/table_skel.o
 
 network_server.o: $(SRC_DIR) $(INC_DIR)
-	$(CC) -c $(SRC_DIR)/network_server.c -I $(INC_DIR) -o $(OBJ_DIR)/network_server.o
+	$(CC) -g -c $(SRC_DIR)/network_server.c -I $(INC_DIR) -o $(OBJ_DIR)/network_server.o
 
 base64.o: $(SRC_DIR) $(INC_DIR)
-	$(CC) -c $(SRC_DIR)/base64.c -I $(INC_DIR) -o $(OBJ_DIR)/base64.o
+	$(CC) -g -c $(SRC_DIR)/base64.c -I $(INC_DIR) -o $(OBJ_DIR)/base64.o
 
 clean:
 	rm -f ./$(OBJ_DIR)/*.o
