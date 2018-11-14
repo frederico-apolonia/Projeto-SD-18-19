@@ -54,6 +54,7 @@ int invoke(struct message_t *msg) {
             }
             msg->opcode += 1;
             msg->c_type = CT_VALUE;
+            printf("STRLEN KEY: %d\n", strlen(msg->content.key));
             data_aux = table_get(server_table, msg->content.key);
             if(data_aux == NULL){
             	data_aux = malloc(sizeof(struct data_t*));
@@ -72,6 +73,7 @@ int invoke(struct message_t *msg) {
             }
             msg->opcode += 1;
             msg->c_type = CT_NONE;
+            printf("STRLEN KEY: %d\n", strlen(msg->content.entry->key));
             result = table_put(server_table, strdup(msg->content.entry->key), data_dup(msg->content.entry->value));
             entry_destroy(msg->content.entry);
             break;

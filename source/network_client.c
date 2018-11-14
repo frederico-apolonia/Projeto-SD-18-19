@@ -61,8 +61,8 @@ int network_connect(struct rtable_t* rtable){
  */
 struct message_t *network_send_receive(struct rtable_t * rtable,
                                        struct message_t *msg){
-	char *msg_enviada, *msg_recebida;
-	struct message_t* msg_result;
+	char *msg_enviada = NULL, *msg_recebida = NULL;
+	struct message_t* msg_result = NULL;
 	int size, result;
 	
 	if ((size = message_to_buffer(msg,&msg_enviada)) == -1){
@@ -79,7 +79,7 @@ struct message_t *network_send_receive(struct rtable_t * rtable,
 	free(msg_enviada);
 	printf("À espera de resposta do servidor ...\n");
 	// receber msg do servidor
-	if (size = read_all(rtable->sockfd, &msg_recebida) < 0) {
+	if ((size = read_all(rtable->sockfd, &msg_recebida)) < 0) {
 		perror("Erro ao receber dados do servidor");
 		close(rtable->sockfd);
 		return NULL;

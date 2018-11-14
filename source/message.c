@@ -7,19 +7,19 @@
 #include "message-private.h"
 
 /* Le uma chave do buffer */
-char* get_key_from_buffer(char *msg_buff, int *buff_count) {
+char* get_key_from_buffer(char *msg_buf, int *buf_count) {
 	short keysize;
-	memcpy(&keysize, msg_buff+*buff_count, sizeof(keysize));
-	*buff_count += sizeof(keysize);
+	memcpy(&keysize, msg_buf+*buf_count, sizeof(keysize));
+	*buf_count += sizeof(keysize);
 
 	char *key = malloc(keysize + 1);
 	if(key == NULL){
 		return NULL;
 	}
-	strncpy(key, msg_buff+*buff_count, ntohs(keysize));
+	strncpy(key, msg_buf+*buf_count, ntohs(keysize));
 	key[ntohs(keysize)] = '\0';
 
-	*buff_count += ntohs(keysize);
+	*buf_count += ntohs(keysize);
 	
 	return key;
 }
@@ -44,80 +44,94 @@ int buffer_key(struct message_t *msg, char **msg_buff){
 }
 
 /*Funcao que coloca a Value de uma mensagem no buffer*/
-int buffer_value(struct message_t *msg, char **msg_buff){
+int buffer_value(struct message_t *msg, char **msg_buff) {
+	int enc_size = 0, buf_size = 8; // short + short + int
+	int buf_count = 0;
+	int datasize = 0, datasize_htonl = 0;
+	short opcode = 0, c_type = 0;
+	char *enc_data = NULL;
 
-	int datasize = msg->content.value->datasize;
-	char *encData;
-	int encodeSize = base64_encode_alloc(msg->content.value->data, datasize, &encData);
-	
-	int size = 2+2+4+encodeSize+1;
-	*msg_buff = malloc(size);
-	if(*msg_buff == NULL){
+	if ((*msg_buff = (char *) malloc(buf_size)) == NULL) {
 		return -1;
 	}
-	short opcode = htons(msg->opcode);
-	short ctype = htons(msg->c_type);
-	memcpy(*msg_buff, &opcode, 2);
-	memcpy(*msg_buff+2, &ctype, 2);
-	int ds2 = htonl(encodeSize);
-	memcpy(*msg_buff+4, &ds2, 4);
-	memcpy(*msg_buff+8, encData, encodeSize);
-	free(encData);
-	return size;
+	// copy opcode to buffer
+	opcode = htons(msg->opcode);
+	memcpy(*msg_buff, &opcode, sizeof(opcode));
+	buf_count += sizeof(opcode);
+	// copy c_type to buffer
+	c_type = htons(msg->c_type);
+	memcpy(*msg_buff + buf_count, &c_type, sizeof(c_type));
+	buf_count += sizeof(c_type);
+
+	datasize = msg->content.value->datasize;
+	if (datasize == 0 || msg->content.value->data == NULL) {
+		// means key wasnt found
+		memcpy(*msg_buff + buf_count, &datasize, sizeof(datasize));
+		buf_count += sizeof(datasize);
+		return buf_size;
+	}
+
+	enc_size = base64_encode_alloc(msg->content.value->data, datasize, &enc_data);
+	buf_size += enc_size;
+	if((*msg_buff = realloc(*msg_buff, buf_size)) == NULL) {
+		return -1;
+	}
+	// copy datasize to buffer
+	datasize_htonl = htonl(enc_size);
+	memcpy(*msg_buff + buf_count, &datasize_htonl, sizeof(datasize_htonl));
+	buf_count += sizeof(datasize_htonl);
+	// copy encoded data to buffer
+	strncpy(*msg_buff + buf_count, enc_data, enc_size);
+	free(enc_data);
+
+	return buf_size;
 }
 
 /*Funcao que coloca a Entry de uma mensagem no buffer*/
 int buffer_entry(struct message_t *msg, char **msg_buff) {
-	
-	//Versao com BASE64 encode
-	/*
-	short keysize = strlen(msg->content.entry->key);
-	int datasize = msg->content.entry->value->datasize;
-	char *encData;
-	int encodeSize = base64_encode_alloc(msg->content.value->data, datasize, &encData);
-	
-	int size = 2+2+2+keysize+1+4+encodeSize;
-	*msg_buff = (char *)malloc(size);
-	if(*msg_buff == NULL){
+	int enc_size = 0;
+	int buf_count = 0, buf_size = 6; // // short + short + short
+	int datasize = 0, datasize_htonl = 0;
+	short keysize = 0;
+	short opcode = 0, c_type = 0;
+	char *enc_data = NULL;
+
+	if ((*msg_buff = (char*) malloc(buf_size)) == NULL) {
 		return -1;
 	}
+	// copy opcode to buffer
+	opcode = htons(msg->opcode);
+	memcpy(*msg_buff, &opcode, sizeof(opcode));
+	buf_count += sizeof(opcode);
+	// copy c_type to buffer
+	c_type = htons(msg->c_type);
+	memcpy(*msg_buff + buf_count, &c_type, sizeof(c_type));
+	buf_count += sizeof(c_type);
+	// copy keysize to buffer
+	keysize = htons(strlen(msg->content.entry->key));
+	memcpy(*msg_buff + buf_count, &keysize, sizeof(keysize));
+	buf_count += sizeof(keysize);
+	// realloc with keysize
+	buf_size += strlen(msg->content.entry->key);
+	if ((*msg_buff = realloc(*msg_buff, buf_size)) == NULL) return -1;
+	// copy key to buffer 
+	strncpy(*msg_buff + buf_count, msg->content.entry->key, strlen(msg->content.entry->key));
+	buf_count += strlen(msg->content.entry->key);
+	// encode value
+	datasize = msg->content.entry->value->datasize;
+	enc_size = base64_encode_alloc(msg->content.entry->value->data, datasize, &enc_data);
+	// realloc with size of enc_size and enc_size :
+	buf_size += (sizeof(datasize_htonl) + enc_size);
+	if ((*msg_buff = realloc(*msg_buff, buf_size)) == NULL) return -1;
+	// copy datasize to buffer
+	datasize_htonl = htonl(enc_size);
+	memcpy(*msg_buff + buf_count, &datasize_htonl, sizeof(datasize_htonl));
+	buf_count += sizeof(datasize_htonl);
+	// copy data encoded to buffer
+	strncpy(*msg_buff + buf_count, enc_data, enc_size);
 	
-	short opcode = htons(msg->opcode);
-	short ctype = htons(msg->c_type);
-	memcpy(*msg_buff, &opcode, 2);
-	memcpy(*msg_buff+2, &ctype, 2);
-	short ks2 = htons(keysize);
-	memcpy(*msg_buff+4, &ks2, 2);
-	memcpy(*msg_buff+6, msg->content.entry->key, keysize);
-	int ds2 = htonl(encodeSize);
-	memcpy(*msg_buff+6+keysize, &ds2, 4);
-	memcpy(*msg_buff+6+keysize+4, encData, datasize);
-	free(encData);*/
-	print_message(msg);
-	short keysize = strlen(msg->content.entry->key);
-	int datasize = msg->content.entry->value->datasize;
-
-	int size = sizeof(msg->opcode) + sizeof(msg->c_type) + sizeof(keysize) + keysize+sizeof(datasize) + datasize;
-	*msg_buff = (char *) malloc(size);
-	if(*msg_buff == NULL){
-		return -1;
-	}
-	
-	short opcode = htons(msg->opcode);
-	memcpy(*msg_buff, &opcode, 2);
-
-	short ctype = htons(msg->c_type);
-	memcpy(*msg_buff+2, &ctype, 2);
-
-	short ks2 = htons(keysize);
-	memcpy(*msg_buff+4, &ks2, 2);
-	memcpy(*msg_buff+6, msg->content.entry->key, keysize);
-
-	int ds2 = htonl(datasize);
-	memcpy(*msg_buff+6+keysize, &ds2, 4);
-	strncpy(*msg_buff+6+keysize+4, msg->content.entry->value->data, datasize);
-	
-	return size;
+	printf("ENCODE SIZE: %d\n", enc_size);
+	return buf_size;
 }
 
 /*Funcao que coloca a Keys de uma mensagem no buffer*/
@@ -247,23 +261,35 @@ int msg_key(struct message_t *msg, char *msg_buff){
 
 /*Funcao que le e coloca uma Value do buffer numa mensagem*/
 int msg_value(struct message_t *msg, char *msg_buff){
-	
-	int datasize, buffCount = 4;
-	memcpy(&datasize, msg_buff+buffCount,4);
-	buffCount += 4;
-	datasize = ntohl(datasize);
-	char *val = malloc(datasize+1);
-	if(val == NULL){
+	int datasize_from_buffer = 0, buff_count = 4;
+	// copy datasize from buffer
+	memcpy(&datasize_from_buffer, msg_buff + buff_count, sizeof(datasize_from_buffer));
+	buff_count += sizeof(datasize_from_buffer);
+	// convert datasize from network
+	int datasize = ntohl(datasize_from_buffer);
+	// if get returned no data
+	if(datasize == 0) {
+		if ((msg->content.value = data_create(1)) == NULL) {
+			return -1;
+		}
+		msg->content.value->datasize = 0;
+		return 0;
+	}
+	// alloc size for data with base64
+	char *data_w_base = NULL;
+	if((data_w_base = (char*) malloc(datasize)) == NULL) {
 		return -1;
 	}
-	strcpy(val, msg_buff+buffCount);
-
-	char *valDec;
-	base64_decode_alloc(val, datasize, &valDec, NULL);
-	free(val);
-
-	if((msg->content.value = data_create2(datasize,valDec))== NULL){
-		free(val);
+	strncpy(data_w_base, msg_buff + buff_count, datasize);
+	// debase64
+	char *data = NULL;
+	if (base64_decode_alloc(data_w_base, datasize, &data, NULL) == -1) {
+		free(data_w_base);
+		return -1;
+	}
+	free(data_w_base);
+	// create value struct
+	if ((msg->content.value = data_create2(strlen(data), data)) == NULL) {
 		return -1;
 	}
 	return 0;
@@ -271,88 +297,44 @@ int msg_value(struct message_t *msg, char *msg_buff){
 
 /*Funcao que le e coloca uma Entry do buffer numa mensagem*/
 int msg_entry(struct message_t *msg, char *msg_buff){
-	//VERSAO SEM BASE64 DECODE
+	int buff_count = 4;
+	int keysize_buffer = 0, keysize = 0;
+	int enc_datasize_from_buffer = 0, enc_datasize = 0;
+	int datasize = 0;
+	char* key = NULL, *enc_data = NULL, *data = NULL;
+	struct data_t *new_data = NULL;
+
+	if ((key = get_key_from_buffer(msg_buff, &buff_count)) == NULL) return -1;
+
+	memcpy(&enc_datasize_from_buffer, msg_buff + buff_count, sizeof(&enc_datasize_from_buffer));
+	enc_datasize = ntohl(enc_datasize_from_buffer);
+	buff_count += sizeof(enc_datasize_from_buffer);
 	
-	int buffCount = 4;
-	char* key = get_key_from_buffer(msg_buff, &buffCount);
-
-	int datasize;
-	memcpy(&datasize, msg_buff+buffCount, 4);
-	buffCount += 4;
-	
-	// +1 for \0
-	char *val = malloc(ntohl(datasize)+1);
-	if(val == NULL){
+	if ((enc_data = (char*) malloc(enc_datasize)) == NULL) {
 		free(key);
 		return -1;
 	}
-
-	strncpy(val, msg_buff+buffCount, ntohl(datasize));
-	val[strlen(val)] = '\0';
-	buffCount += ntohl(datasize);
-
-	struct data_t *newData = data_create2(ntohl(datasize), val);
-	if(newData == NULL){
+	// get value data from buf
+	strncpy(enc_data, msg_buff + buff_count, enc_datasize);
+	buff_count += enc_datasize;
+	// deBASE64
+	if (base64_decode_alloc(enc_data, enc_datasize, &data, &datasize) == -1) {
 		free(key);
-		free(val);
+		free(enc_data);
 		return -1;
 	}
-
-	struct entry_t *entry_result = entry_create(key, newData);
-	if(entry_result == NULL){
-		free(key);
-		free(val);
-		data_destroy(newData);
-		return -1;
-	}
-	msg->content.entry = entry_result;
-	//Versao com BASE64 decode
-	/*
-	int buffCount = 4;
-	short keysize;
-	memcpy(&keysize, msg_buff+buffCount, 2);
-	keysize = ntohs(keysize);
-	buffCount += 2;
-	char *key = malloc(keysize+1);
-	if(key == NULL){
-		return -1;
-	}
-	strcpy(key, msg_buff+buffCount);
-	buffCount += keysize;
-
-	int datasize;
-	memcpy(&datasize, msg_buff+buffCount, 4);
-	datasize = ntohl(datasize);
-	buffCount += 4;
-	
-	char *val = malloc(datasize+1);
-	if(val == NULL){
+	free(enc_data);
+	printf("ENCODE SIZE: %d\n", enc_datasize);
+	// create value
+	if ((new_data = data_create2(datasize, data)) == NULL) {
 		free(key);
 		return -1;
 	}
-	//Buffer corrupto
-	strcpy(val, msg_buff+buffCount);
-	printf("val: %s\n", val);
-	buffCount += datasize;
-	
-	char *valDec;
-	base64_decode_alloc(val, datasize, &valDec, NULL);
-	free(val);
-
-	struct data_t *newData = data_create2(datasize, valDec);
-	if(newData == NULL){
-		free(key);
-		free(val);
+	// create entry
+	if ((msg->content.entry = entry_create(key, new_data)) == NULL) {
 		return -1;
 	}
 
-	if((msg->content.entry = entry_create(key, newData)) == NULL){
-		free(key);
-		free(val);
-		data_destroy(newData);
-		return -1;
-	}*/
-	
 	return 0;
 }
 
@@ -390,7 +372,7 @@ int msg_result(struct message_t *msg, char *msg_buff) {
 }
 
 struct message_t *buffer_to_message(char *msg_buf, int msg_size){
-	struct message_t *newMessage = malloc(sizeof(struct message_t *));
+	struct message_t *newMessage = (struct message_t *) malloc(sizeof(struct message_t));
 	if(newMessage == NULL){
 		return NULL;
 	}

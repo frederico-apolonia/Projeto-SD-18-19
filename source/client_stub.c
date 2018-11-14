@@ -94,9 +94,9 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry){
 		return -1;
 	}
 
-	struct message_t *msg_pedido, *msg_resposta;
+	struct message_t *msg_pedido, *msg_resposta = NULL;
 	//Usar o codigo 40
-	msg_pedido = (struct message_t*) malloc(sizeof(struct message *));
+	msg_pedido = (struct message_t*) malloc(sizeof(struct message_t));
 	if (msg_pedido == NULL){
 		return -1;
 	}
@@ -123,21 +123,28 @@ struct data_t *rtable_get(struct rtable_t *rtable, char *key){
 		return NULL;
 	}
 
-	struct message_t *msg_pedido, *msg_resposta;
+	struct message_t *msg_pedido, *msg_resposta = NULL;
 	//Usar o codigo 30
-	msg_pedido = (struct message_t*) malloc(sizeof(struct message_t*));
+	msg_pedido = (struct message_t*) malloc(sizeof(struct message_t));
 	if (msg_pedido == NULL){
 		return NULL;
 	}
 	msg_pedido->opcode = OP_GET;
 	msg_pedido->c_type = CT_KEY;
 	msg_pedido->content.key = strdup(key);
-	printf("CHAVE COPIADA PARA A MSG PEDIDO: %s\n", msg_pedido->content.key);
 
 	msg_resposta = network_send_receive(rtable,msg_pedido);
 	free_message(msg_pedido);
+	
 	// resposta
 	if (msg_resposta == NULL || (msg_resposta->opcode) == OP_ERROR){
+		free_message(msg_resposta);
+		printf("ERROR: Server error.\n");
+		return NULL;
+	}
+	// chave nao existe
+	if (msg_resposta->content.value->datasize == 0) {
+		printf("ERROR: Key not found!\n");
 		free_message(msg_resposta);
 		return NULL;
 	}
@@ -155,9 +162,9 @@ int rtable_del(struct rtable_t *rtable, char *key){
 	if(rtable == NULL || key == NULL){
 		return -1;
 	}
-	struct message_t *msg_pedido, *msg_resposta;
+	struct message_t *msg_pedido, *msg_resposta = NULL;
 	//Usar o codigo 20
-	msg_pedido = (struct message_t*) malloc(sizeof(struct message_t*));
+	msg_pedido = (struct message_t*) malloc(sizeof(struct message_t));
 	if (msg_pedido == NULL){
 		return -1;
 	}
@@ -189,9 +196,9 @@ int rtable_size(struct rtable_t *rtable){
 	if(rtable == NULL){
 		return -1;
 	}
-	struct message_t *msg_pedido, *msg_resposta;
+	struct message_t *msg_pedido, *msg_resposta = NULL;
 	//Usar o codigo 10
-	msg_pedido = (struct message_t*) malloc(sizeof(struct message_t*));
+	msg_pedido = (struct message_t*) malloc(sizeof(struct message_t));
 	if (msg_pedido == NULL){
 		return -1;
 	}
@@ -216,11 +223,11 @@ char **rtable_get_keys(struct rtable_t *rtable){
 	if(rtable == NULL){
 		return NULL;
 	}
-	struct message_t *msg_pedido, *msg_resposta;
+	struct message_t *msg_pedido, *msg_resposta = NULL;
 	int num_keys;
 	char** result_keys;
 	//Usar o codigo 50
-	msg_pedido = (struct message_t*) malloc(sizeof(struct message_t*));
+	msg_pedido = (struct message_t*) malloc(sizeof(struct message_t));
 	if (msg_pedido == NULL){
 		return NULL;
 	}

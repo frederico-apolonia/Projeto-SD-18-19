@@ -49,8 +49,8 @@ int main(int argc, char **argv){
 	struct rtable_t *rtable;
 	char* splitter = " ";
 	char input_utilizador[MAX_MSG];
-	struct data_t * data_result;
-	struct entry_t * entry_result;
+	struct data_t * data_result = NULL;
+	struct entry_t * entry_result = NULL;
 
 	/* Testar os argumentos de entrada */
 	if (argc < 2){
@@ -164,8 +164,9 @@ int main(int argc, char **argv){
 				for (count = 0; listgetKeys[count] != NULL ; count++){
 				    if(count == 0) {
 				        printf("%s", listgetKeys[count]);
-				    }
-				    printf(", %s",listgetKeys[count]);    
+				    } else {
+                        printf(", %s",listgetKeys[count]);
+                    }
 				}
 				printf("\n");	
 				rtable_free_keys(listgetKeys);

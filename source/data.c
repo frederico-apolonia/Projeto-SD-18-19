@@ -13,7 +13,7 @@ struct data_t *data_create(int size){
 	}
 
 	newData->datasize = size;
-	newData->data = malloc(size);
+	newData->data = malloc(size+1);
 	if(newData->data == NULL) {
 		// if malloc failed
 		free(newData);
@@ -57,7 +57,8 @@ struct data_t *data_dup(struct data_t *data){
 			data_destroy(data_copy);
 			return NULL;
 		}
-		memcpy(data_copy->data, data->data, data->datasize);
+		strncpy(data_copy->data, data->data, (data->datasize) + 1);
+		// memcpy(data_copy->data, data->data, (data->datasize) + 1);
 		return data_copy;
 	}
 	

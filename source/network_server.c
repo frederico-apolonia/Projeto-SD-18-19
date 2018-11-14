@@ -72,8 +72,9 @@ int network_main_loop(int listening_socket){
 	printf("Server is waiting for a new connection...\n");
 	while ((client_socket = accept(listening_socket, (struct sockaddr *) &client, &size_client)) != -1){
 		printf("New client connection\n");
-		while(result = recv(client_socket, &cmessage, sizeof(char), MSG_PEEK)) {
-			struct message_t* message;
+		while(result = recv(client_socket, &cmessage, sizeof(char), MSG_PEEK) != -1) {
+			printf("Waiting for a command...\n");
+			struct message_t* message = NULL;
 			// reads message from client
 			if ((message = network_receive(client_socket)) != NULL) {
 				printf("New message received from the client...\n");
@@ -91,7 +92,12 @@ int network_main_loop(int listening_socket){
 				} else {
 					printf("There was an error while sending this message to the client.\n");
 				}
+				free_message(message);
+				printf("Message freed and ready to receive next command\n");
 			}
+		}
+		if(result == -1) {
+		    perror("");
 		}
 		printf("Goodbye, client!\n");
 		close(client_socket);
@@ -107,9 +113,9 @@ int network_main_loop(int listening_socket){
  *   reservando a memória necessária para a estrutura message_t.
  */
 struct message_t *network_receive(int client_socket){
-	struct message_t *message;
-	int result;
-	char *buffer;
+	struct message_t *message = NULL;
+	int result = 0;
+	char *buffer = NULL;
 
 	result = read_all(client_socket, &buffer);
 	if(result < 0) {
@@ -141,12 +147,10 @@ int network_send(int client_socket, struct message_t *msg) {
 		return -1;
 	}
 	
-	free_message(msg);
 	// sends message to client
-	if ((function_result = write(client_socket, buffer, msg_size)) != msg_size) {
+	if ((function_result = write_all(client_socket, buffer, msg_size)) != msg_size) {
 		perror("SEND MESSAGE TO CLIENT FAILED");
 		free(buffer);
-		free_message(msg);
 		return -1;
 	}
 	free(buffer);
