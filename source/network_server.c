@@ -7,12 +7,25 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <poll.h>
+#include <fcntl.h>
+#include <signal.h>
 
 #include "message.h"
 #include "table_skel.h"
 #include "network_server.h"
 #include "read_write.h"
 #include "message-private.h"
+
+static volatile int keep_looping = 1;
+
+#define NFDESC 10
+#define TIMEOUT 5000
+
+void sigint_handler(int dummy) {
+    keep_looping = 0;
+}
+
 
 /* Função para preparar uma socket de receção de pedidos de ligação
  * num determinado porto.
@@ -61,16 +74,97 @@ int network_main_loop(int listening_socket){
 	if  (listening_socket < 0) {
 		return -1;
 	}
-
+	struct pollfd *connections = malloc(sizeof(struct pollfd*)*NFDESC);
+	if(connections == NULL){
+		return -1;
+	}
 	struct sockaddr_in client;
-	socklen_t size_client;
-	int client_socket;
-	int msg_process_result, send_msg_result;
-	int result;
+	socklen_t size_client = sizeof(struct sockaddr);
+	int client_socket, msg_process_result, send_msg_result, result, closed = 0, nfds, kfds, i;
 	char cmessage;
 
 	printf("Server is waiting for a new connection...\n");
-	while ((client_socket = accept(listening_socket, (struct sockaddr *) &client, &size_client)) != -1){
+	for (i = 0; i < NFDESC; i++){
+    		connections[i].fd = -1;
+	}
+
+ 	connections[0].fd = listening_socket;  // Vamos detetar eventos na welcoming socket
+ 	connections[0].events = POLLIN;
+
+  	nfds = 1;
+
+	signal(SIGINT, sigint_handler);
+
+	while((kfds = poll(connections, nfds, TIMEOUT)) >= 0 && keep_looping){
+		//caso haja uma nova conexao
+		if((connections[0].revents & POLLIN) && (nfds < NFDESC)){
+			//coloca-se o cliente em connections
+			if ((connections[nfds].fd = accept(connections[0].fd, (struct sockaddr *) &client, &size_client)) > 0){
+				printf("New client connection\n");
+				connections[nfds].events = POLLIN;
+				nfds++;
+			}
+		}
+
+		for(i = 1; i < nfds; i++ ){
+			if(connections[i].revents & POLLIN){
+				printf("TEST\n");
+				struct message_t* message;
+				if ((message = network_receive(connections[i].fd)) == NULL) {
+					printf("Connection ended by client\n");
+					//Caso ocorra erro de leitura, fecha-se o socket do cliente
+					close(connections[i].fd);
+					connections[i].fd = -1;
+					closed = 1;
+					continue;
+				}else{
+					printf("New message received from the client...\n");
+					print_message(message); // for debugging purposes
+					// invoke will update message, returns -1 if something fails
+					msg_process_result = invoke(message);
+					if (msg_process_result == -1) {
+						printf("There was an error while processing the current message\n");
+						build_error_message(message);
+					}
+					printf("Message that is going to be sent to the client:\n");
+					print_message(message);
+					if ((send_msg_result = network_send(connections[i].fd, message)) > 0) {
+						printf("Message was successfuly processed and sent to client\n");
+					} else {
+						//caso ocorra erro de envio de mensagem, fecha-se o socket do cliente
+						close(connections[i].fd);
+						connections[i].fd = -1;
+						closed = 1;
+						continue;
+					}
+				}
+			}
+
+			if((connections[i].revents & POLLHUP) || (connections[i].revents & POLLERR)){
+				close(connections[i].fd);
+				connections[i].fd = -1;
+				closed = 1;
+			}
+		}
+		//se houver fecho de alguma conexao, as posicoes dos clientes
+		//vao ser shifted para a esquerda
+		if(closed){
+			closed = 0;
+			int j, k;
+			for(j = 0; j < nfds; j++){
+				if(connections[j].fd == -1){
+					for(k = j; j < nfds; j++){
+						connections[j].fd = connections[j+1].fd;
+					}
+					i--;
+					nfds--;
+				}
+			}
+		}
+	}
+	close(listening_socket);
+	return 0;
+	/*while ((client_socket = accept(listening_socket, (struct sockaddr *) &client, &size_client)) != -1){
 		printf("New client connection\n");
 		while(result = recv(client_socket, &cmessage, sizeof(char), MSG_PEEK) != -1) {
 			printf("Waiting for a command...\n");
@@ -104,7 +198,7 @@ int network_main_loop(int listening_socket){
 	}
 	perror("Error from client socket");
 	printf("Client socket: %d\n", client_socket);
-	return 0;
+	return 0;*/
 }
 
 /* Esta função deve:
@@ -118,10 +212,12 @@ struct message_t *network_receive(int client_socket){
 	char *buffer = NULL;
 
 	result = read_all(client_socket, &buffer);
+	printf("network_receive=======================\n");
 	if(result < 0) {
 		/* ocorreu um erro a ler a resposta */
-		free(buffer);
 		perror("Reading client buffer failed");
+		free(buffer);
+		close(client_socket);
 		return NULL;
 	} else {/* processamento da requisição e da resposta */
 		message = buffer_to_message(buffer, result);
@@ -146,10 +242,10 @@ int network_send(int client_socket, struct message_t *msg) {
 		free(buffer);
 		return -1;
 	}
-	
 	// sends message to client
 	if ((function_result = write_all(client_socket, buffer, msg_size)) != msg_size) {
-		perror("SEND MESSAGE TO CLIENT FAILED");
+		perror("Failed to send message to client");
+		close(client_socket);
 		free(buffer);
 		return -1;
 	}

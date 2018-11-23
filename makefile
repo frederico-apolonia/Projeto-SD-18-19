@@ -6,7 +6,8 @@ OBJ_DIR  = object
 LIB_DIR  = library
 
 all: data.o entry.o list.o table.o message.o table_skel.o network_server.o read_write.o\
-	 network_client.o client_stub.o base64.o server-lib.o client-lib.o
+	 network_client.o client_stub.o base64.o persistence_manager.o persistent_table.o\
+	 server-lib.o client-lib.o
 
 table-server:
 	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/table-server.c $(LIB_DIR)/server-lib.o -o $(BIN_DIR)/table-server
@@ -33,13 +34,18 @@ test_message: $(OBJ_DIR)/*.o
 	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/test_message.c $(OBJ_DIR)/data.o $(OBJ_DIR)/entry.o $(OBJ_DIR)/message.o \
 	$(OBJ_DIR)/base64.o -o $(BIN_DIR)/test_message
 
+testa_log: $(OBJ_DIR)/*.o
+	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/testa_log.c $(OBJ_DIR)/list.o $(OBJ_DIR)/entry.o $(OBJ_DIR)/table.o $(OBJ_DIR)/data.o $(OBJ_DIR)/message.o \
+	$(OBJ_DIR)/persistence_manager.o $(OBJ_DIR)/read_write.o $(OBJ_DIR)/base64.o -o $(BIN_DIR)/testa_log
+
 
 client-lib.o:
 	ld -r $(OBJ_DIR)/client_stub.o $(OBJ_DIR)/network_client.o $(OBJ_DIR)/message.o $(OBJ_DIR)/data.o $(OBJ_DIR)/entry.o\
 		  $(OBJ_DIR)/read_write.o $(OBJ_DIR)/base64.o -o $(LIB_DIR)/client-lib.o 
 server-lib.o:
 	ld -r $(OBJ_DIR)/data.o $(OBJ_DIR)/entry.o $(OBJ_DIR)/list.o $(OBJ_DIR)/table.o $(OBJ_DIR)/message.o $(OBJ_DIR)/table_skel.o\
-		  $(OBJ_DIR)/network_server.o $(OBJ_DIR)/base64.o $(OBJ_DIR)/read_write.o -o $(LIB_DIR)/server-lib.o
+		  $(OBJ_DIR)/network_server.o $(OBJ_DIR)/persistence_manager.o $(OBJ_DIR)/persistent_table.o $(OBJ_DIR)/base64.o\
+		  $(OBJ_DIR)/read_write.o -o $(LIB_DIR)/server-lib.o
 
 
 data.o: $(SRC_DIR) $(INC_DIR)
@@ -71,6 +77,12 @@ table_skel.o: $(SRC_DIR) $(INC_DIR)
 
 network_server.o: $(SRC_DIR) $(INC_DIR)
 	$(CC) -g -c $(SRC_DIR)/network_server.c -I $(INC_DIR) -o $(OBJ_DIR)/network_server.o
+
+persistence_manager.o: $(SRC_DIR) $(INC_DIR)
+	$(CC) -g -c $(SRC_DIR)/persistence_manager.c -I $(INC_DIR) -o $(OBJ_DIR)/persistence_manager.o
+
+persistent_table.o: $(SRC_DIR) $(INC_DIR)
+	$(CC) -g -c $(SRC_DIR)/persistent_table.c -I $(INC_DIR) -o $(OBJ_DIR)/persistent_table.o
 
 base64.o: $(SRC_DIR) $(INC_DIR)
 	$(CC) -g -c $(SRC_DIR)/base64.c -I $(INC_DIR) -o $(OBJ_DIR)/base64.o

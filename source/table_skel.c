@@ -1,21 +1,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
 #include "message.h"
 #include "message-private.h"
 #include "table_skel.h"
-#include "table.h"
-#include "table-private.h"
+#include "persistent_table.h"
+#include "persistent_table-private.h"
 
-extern struct table_t * server_table;
+extern struct table_t *table;
+extern struct ptable_t *ptable;
 
 int table_skel_init(int n_lists) {
-    server_table = table_create(n_lists);
-    return (server_table != NULL) ? 0:1;
+    table = table_create(n_lists);
+    return (table != NULL) ? 0:1;
 }
 
 int table_skel_destroy() {
-    table_destroy(server_table);
+    table_destroy(ptable->table);
 }
 
 int build_error_message(struct message_t *msg) {
@@ -25,14 +27,16 @@ int build_error_message(struct message_t *msg) {
 
 int invoke(struct message_t *msg) {
     int result = 0;
-    struct data_t* data_aux;
+    char *msg_key = NULL;
+    struct data_t* data_aux = NULL;
+    struct data_t *msg_data = NULL;
 
     switch (msg->opcode)
     {
         case OP_SIZE:
             msg->opcode += 1;
             msg->c_type = CT_RESULT;
-            msg->content.result = table_size(server_table);
+            msg->content.result = ptable_size(ptable);
             result = 0;
             break;
 
@@ -43,7 +47,10 @@ int invoke(struct message_t *msg) {
             }
             msg->opcode += 1;
             msg->c_type = CT_NONE;
-            result = table_del(server_table, msg->content.key);
+
+            msg_key = msg->content.key;
+
+            result = ptable_del(ptable, msg_key);
             free(msg->content.key);
             break;
     
@@ -54,8 +61,10 @@ int invoke(struct message_t *msg) {
             }
             msg->opcode += 1;
             msg->c_type = CT_VALUE;
-            printf("STRLEN KEY: %d\n", strlen(msg->content.key));
-            data_aux = table_get(server_table, msg->content.key);
+
+            msg_key = msg->content.key;
+            
+            data_aux = ptable_get(ptable, msg_key);
             if(data_aux == NULL){
             	data_aux = malloc(sizeof(struct data_t*));
             	data_aux->datasize = 0;
@@ -63,7 +72,7 @@ int invoke(struct message_t *msg) {
 			}
             free(msg->content.key);
             msg->content.value = data_aux;
-            result = data_aux != NULL ? 0:-1;
+            result = data_aux->data != NULL ? 0:-1;
             break;
 
         case OP_PUT:
@@ -71,17 +80,25 @@ int invoke(struct message_t *msg) {
                 result = -1;
                 break;
             }
-            msg->opcode += 1;
-            msg->c_type = CT_NONE;
-            printf("STRLEN KEY: %d\n", strlen(msg->content.entry->key));
-            result = table_put(server_table, strdup(msg->content.entry->key), data_dup(msg->content.entry->value));
+            msg_key = msg->content.entry->key;
+            msg_data = msg->content.entry->value;
+
+            if (ptable_put(ptable, msg_key, msg_data) != -1) {
+                msg->opcode += 1;
+                msg->c_type = CT_NONE;
+                result = 0;
+            } else {
+                printf("Error while processing put...\n");
+                result = -1;
+            }
+            // destroy entry to avoid mem leaks!
             entry_destroy(msg->content.entry);
             break;
 
         case OP_GETKEYS:
             msg->opcode += 1;
             msg->c_type = CT_KEYS;
-            msg->content.keys = table_get_keys(server_table);
+            msg->content.keys = ptable_get_keys(ptable);
             result = msg->content.keys != NULL ? 0:-1;
             break;
 
@@ -90,7 +107,7 @@ int invoke(struct message_t *msg) {
             break;
     }
     printf("Table State: \n");
-	table_print(server_table);
+	table_print(ptable->table);
     return result;
     
 }

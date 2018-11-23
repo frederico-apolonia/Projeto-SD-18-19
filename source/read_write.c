@@ -9,10 +9,11 @@
 int read_n(int socket, char* dst, int n) {
 	while (n > 0) {
 		int r = read(socket, dst, n);
-		if (r == -1) {
+		if (r <= 0) {
 			return -1;
 		}
 		n -= r;
+		dst += r;
 	}
 }
 
@@ -142,7 +143,7 @@ int read_all(int socket, char** buf) {
 	if (read_n(socket, (char*) &c_type, sizeof(c_type)) == -1) {
 		return -1;
 	}
-	
+
 	append_into_buffer(buf, &curr_buf_pos, (char*) &c_type, sizeof(c_type));
 
 	switch (ntohs(c_type))
@@ -167,7 +168,7 @@ int read_all(int socket, char** buf) {
 			if(read_key_from_socket(socket, buf, &buf_size, &curr_buf_pos) == -1) {
 				return -1;
 			}
-			// ler o valor 
+			// ler o valor
 			if(read_value_from_socket(socket, buf, &buf_size, &curr_buf_pos) == -1) {
 				return -1;
 			}

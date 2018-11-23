@@ -318,7 +318,7 @@ int msg_entry(struct message_t *msg, char *msg_buff){
 	strncpy(enc_data, msg_buff + buff_count, enc_datasize);
 	buff_count += enc_datasize;
 	// deBASE64
-	if (base64_decode_alloc(enc_data, enc_datasize, &data, &datasize) == -1) {
+	if (base64_decode_alloc(enc_data, enc_datasize, &data, (size_t *) &datasize) == -1) {
 		free(key);
 		free(enc_data);
 		return -1;
