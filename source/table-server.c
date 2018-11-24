@@ -14,38 +14,6 @@
 #include "persistent_table.h"
 
 struct ptable_t *ptable;
-struct table_t *table;
-
-int init_ptable(int n_lists, char *log_filename, int log_size) {
-	struct pmanager_t *pmanager;
-	/* init table */
-	if(table_skel_init(n_lists) == -1) {
-		printf("Table init failed\n");
-		return -1;
-	}
-	/* init pmanager */
-	if((pmanager = pmanager_create(log_filename, log_size)) == NULL) {
-		printf("Persistence manager creation failed\n");
-		table_destroy(table);
-		return -1;
-	}
-	/* init ptable */
-	if((ptable = ptable_create(table, pmanager)) == NULL) {
-		printf("Ptable creation failed\n");
-		table_destroy(table);
-		pmanager_destroy_clear(pmanager);
-		return -1;
-	}
-
-	if(pmanager_have_data(pmanager) == 1) {
-		if (pmanager_fill_state(pmanager, table) == -1) {
-			printf("Table recover to memory failed\n");
-			return -1;
-		}
-	}
-
-	return 0;
-}
 
 void close_server(int listening_socket) {
 	network_server_close(listening_socket);
@@ -86,7 +54,7 @@ int main(int argc, char **argv){
 	/* inicialização da camada de rede */
 	listening_socket = network_server_init(server_port);
 	/* inicializacao da tabela e respetivas listas */
-	if(init_ptable(n_lists, log_filename, log_size) == -1) {
+	if(table_skel_init(n_lists, log_filename, log_size) == -1) {
 		return -1;
 	}
 	printf("Criou %d tabelas..\n", n_lists);

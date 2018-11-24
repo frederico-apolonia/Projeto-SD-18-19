@@ -8,12 +8,39 @@
 #include "persistent_table.h"
 #include "persistent_table-private.h"
 
-extern struct table_t *table;
 extern struct ptable_t *ptable;
 
-int table_skel_init(int n_lists) {
-    table = table_create(n_lists);
-    return (table != NULL) ? 0:1;
+int table_skel_init(int n_lists, char *log_filename, int log_size) {
+    struct table_t *table;
+    struct pmanager_t *pmanager;
+
+    /* init table */
+    if ((table = table_create(n_lists)) == NULL) {
+        printf("Table init failed\n");
+        return -1;
+    }
+    /* init pmanager */
+	if((pmanager = pmanager_create(log_filename, log_size)) == NULL) {
+		printf("Persistence manager creation failed\n");
+		table_destroy(table);
+		return -1;
+	}
+    /* init ptable */
+	if((ptable = ptable_create(table, pmanager)) == NULL) {
+		printf("Ptable creation failed\n");
+		table_destroy(table);
+		pmanager_destroy_clear(pmanager);
+		return -1;
+	}
+
+	if(pmanager_have_data(pmanager) == 1) {
+		if (pmanager_fill_state(pmanager, table) == -1) {
+			printf("Table recover to memory failed\n");
+			return -1;
+		}
+	}
+
+    return 0;
 }
 
 int table_skel_destroy() {

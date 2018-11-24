@@ -9,7 +9,7 @@
  * serem usadas pela tabela mantida no servidor.
  * Retorna 0 (OK) ou -1 (erro, por exemplo OUT OF MEMORY)
  */
-int table_skel_init(int n_lists);
+int table_skel_init(int n_lists, char *log_filename, int log_size);
 
 /* Liberta toda a memória e recursos alocados pela função table_skel_init.
  */
