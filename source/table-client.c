@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 #include "message.h"
 #include "data.h"
@@ -8,6 +9,8 @@
 #include "network_client.h"
 #include "client_stub.h"
 #include "client_stub-private.h"
+
+int FIRST_TRY = 1;
 
 /*
 	Programa cliente para manipular tabela de hash remota.
@@ -52,6 +55,9 @@ int main(int argc, char **argv){
 	struct data_t * data_result = NULL;
 	struct entry_t * entry_result = NULL;
 
+	/* Ignore SIGPIPE */
+	signal(SIGPIPE, SIG_IGN);
+
 	/* Testar os argumentos de entrada */
 	if (argc < 2){
 		printf("Exemplo de uso: ./table_client 10.101.148.144:54321\n");
@@ -67,6 +73,10 @@ int main(int argc, char **argv){
 
 	/* Fazer ciclo até que o utilizador resolva fazer "quit" */
  	while (1 == 1){
+
+		 if(FIRST_TRY < 0) {
+			break;
+		 }
 
 		printf(">>> "); // Mostrar a prompt para inserção de comando
 

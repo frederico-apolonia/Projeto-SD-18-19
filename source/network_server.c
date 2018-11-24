@@ -32,13 +32,18 @@ void sigint_handler(int dummy) {
  * Retornar o descritor do socket (OK) ou -1 (erro).
  */
 int network_server_init(short port){
-	int sockfd;
+	int sockfd, optval=1;
 	struct sockaddr_in server;
 	// creates TCP socket
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("Error while creating socket");
 		return -1;
 	}
+
+	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (int *)&optval,
+      	sizeof(optval)) < 0 ) {
+    	perror("SO_REUSEADDR setsockopt error");
+  	}
 
 	// fills struct server with addresses to bind to the socket
 	server.sin_family = AF_INET;

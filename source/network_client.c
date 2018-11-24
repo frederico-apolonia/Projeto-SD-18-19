@@ -12,6 +12,8 @@
 #include "client_stub-private.h"
 #include "read_write.h"
 
+extern int FIRST_TRY;
+
 /* Esta função deve:
  * - Obter o endereço do servidor (struct sockaddr_in) a base da
  *   informação guardada na estrutura rtable;
@@ -70,19 +72,38 @@ struct message_t *network_send_receive(struct rtable_t * rtable,
 		close(rtable->sockfd);
 		return NULL;					   
 	}
-	result = write_all(rtable->sockfd, msg_enviada, size);
-	if (result != size){
-		perror("Erro ao enviar dados ao servidor");
-		close(rtable->sockfd);
-		return NULL;
+
+	result = write_all(rtable->sockfd, msg_enviada, 1);
+	while(FIRST_TRY >= 0) {
+		result += write_all(rtable->sockfd, msg_enviada+1, size-1);
+		if (result != size) {
+			if (FIRST_TRY > 0) {
+				sleep(RETRY_TIME);
+				FIRST_TRY--;
+			} else {
+				printf("Erro ao enviar dados para o servidor!\n");
+				free(msg_enviada);
+				FIRST_TRY--;
+				return NULL;
+			}
+		} else break;
 	}
 	free(msg_enviada);
+
 	printf("À espera de resposta do servidor ...\n");
 	// receber msg do servidor
-	if ((size = read_all(rtable->sockfd, &msg_recebida)) < 0) {
-		perror("Erro ao receber dados do servidor");
-		close(rtable->sockfd);
-		return NULL;
+	while(FIRST_TRY >= 0) {
+		size = read_all(rtable->sockfd, &msg_recebida);
+		if (size < 0) {
+			if (FIRST_TRY > 0) {
+				sleep(RETRY_TIME);
+				FIRST_TRY--;
+			} else {
+				printf("Erro ao receber dados do servidor!\n");
+				FIRST_TRY--;
+				return NULL;
+			}
+		} else break;
 	}
 
 	msg_result = buffer_to_message(msg_recebida,size);
