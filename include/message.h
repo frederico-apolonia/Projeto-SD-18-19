@@ -30,6 +30,8 @@
 /* Opcode representativo de inexistência de content (e.g., getkeys e size */
 #define CT_NONE   60  
 
+/* Define o tempo para voltar a tentar o contacto com o servidor */
+#define RETRY_TIME 5
 
 /* Estrutura que representa uma mensagem genérica a ser transmitida.
  * Esta mensagem pode ter vários tipos de conteúdos. */
