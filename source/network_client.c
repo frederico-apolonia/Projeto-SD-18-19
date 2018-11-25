@@ -1,3 +1,8 @@
+/*  Grupo 034
+ *  Francisco Grilo - 49497
+ *  Frederico Apolónia - 47892
+ *  Ye Yang - 49521
+ */
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>

@@ -34,11 +34,6 @@ test_message: $(OBJ_DIR)/*.o
 	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/test_message.c $(OBJ_DIR)/data.o $(OBJ_DIR)/entry.o $(OBJ_DIR)/message.o \
 	$(OBJ_DIR)/base64.o -o $(BIN_DIR)/test_message
 
-testa_log: $(OBJ_DIR)/*.o
-	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/testa_log.c $(OBJ_DIR)/list.o $(OBJ_DIR)/entry.o $(OBJ_DIR)/table.o $(OBJ_DIR)/data.o $(OBJ_DIR)/message.o \
-	$(OBJ_DIR)/persistence_manager.o $(OBJ_DIR)/read_write.o $(OBJ_DIR)/base64.o -o $(BIN_DIR)/testa_log
-
-
 client-lib.o:
 	ld -r $(OBJ_DIR)/client_stub.o $(OBJ_DIR)/network_client.o $(OBJ_DIR)/message.o $(OBJ_DIR)/data.o $(OBJ_DIR)/entry.o\
 		  $(OBJ_DIR)/read_write.o $(OBJ_DIR)/base64.o -o $(LIB_DIR)/client-lib.o 

@@ -1,3 +1,8 @@
+/*  Grupo 034
+ *  Francisco Grilo - 49497
+ *  Frederico Apolónia - 47892
+ *  Ye Yang - 49521
+ */
 /*
    Programa que implementa um servidor de uma tabela hash com chainning.
    Uso: table-server <port> <n_lists>

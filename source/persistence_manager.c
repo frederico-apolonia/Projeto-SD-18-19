@@ -1,3 +1,8 @@
+/*  Grupo 034
+ *  Francisco Grilo - 49497
+ *  Frederico Apolónia - 47892
+ *  Ye Yang - 49521
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +15,7 @@
 #include "persistence_manager-private.h"
 #include "read_write.h"
 #include "message.h"
+#include "base64.h"
 
 /* Cria um gestor de persist�ncia que armazena logs em filename+".log" e o
  * estado do sistema em filename+".ckp". O par�metro logsize define o
@@ -60,7 +66,7 @@ struct pmanager_t *pmanager_create(char *filename, int logsize){
 	strcpy(pmanager->ckpfilename, filename);
 	strcat(pmanager->ckpfilename, ".ckp");
 
-	if((pmanager->logfile = open(pmanager->logfilename,O_WRONLY|O_CREAT,0640)) < 0){
+	if((pmanager->logfile = open(pmanager->logfilename,O_RDWR|O_CREAT,S_IRUSR|S_IWUSR)) < 0){
 		perror("Log open error");
 		free(pmanager->logfilename);
 		free(pmanager->ckpfilename);
@@ -68,7 +74,7 @@ struct pmanager_t *pmanager_create(char *filename, int logsize){
 		return NULL;
 	}
 
-	if((pmanager->ckpfile = open(pmanager->ckpfilename,O_WRONLY|O_CREAT,0640)) < 0){
+	if((pmanager->ckpfile = open(pmanager->ckpfilename,O_RDWR|O_CREAT,S_IRUSR|S_IWUSR)) < 0){
 		perror("Ckp open error");
 		close(pmanager->logfile);
 		free(pmanager->logfilename);
@@ -129,37 +135,35 @@ int pmanager_destroy_clear(struct pmanager_t *pmanager){
 		return -1;
 	}
 
-	//remocao dos ficheiros log e ckp dado o nome do ficheiro
-	if(remove(pmanager->logfilename) < 0){
-		return -1;
+	if(pmanager->logfilename != NULL){
+		remove(pmanager->logfilename);
+		free(pmanager->logfilename);
 	}
-
-	if(remove(pmanager->ckpfilename) < 0){
-		return -1;
-	}
-
-	if(pmanager->filename != NULL){
-		free(pmanager->filename);
+	
+	if(pmanager->ckpfilename != NULL){
+		remove(pmanager->ckpfilename);
+		free(pmanager->ckpfilename);
 	}
 
 	if(pmanager->logfilename != NULL){
 		free(pmanager->logfilename);
 	}
 
-	if(pmanager->ckpfilename != NULL){
-		free(pmanager->ckpfilename);
-	}
-
-	if(pmanager->sttfilename){
+	if(pmanager->sttfilename != NULL){
+		remove(pmanager->sttfilename);
 		free(pmanager->sttfilename);
 	}
-
-	if(pmanager->logfile > 0){
-		close(pmanager->logfile);
+s
+	if(pmanager->logfile >s 0){
+		close(pmanager->losgfile);
 	}
 
 	if(pmanager->ckpfile > 0){
 		close(pmanager->ckpfile);
+	}
+
+	if(pmanager->sttfile > 0){
+		close(pmanager->sttfile);
 	}
 
 	free(pmanager);
@@ -248,19 +252,21 @@ int table_write_stt(int fd, struct table_t *table){
 	struct entry_t* curr_entry;
 	struct data_t* curr_data;
 	struct message_t* curr_message;
-	int i, buff_size, fsize;
-
+	int i, buff_size, fsize = 0;
 	for(i = 0; i < table->numElems; i++){
 		//retira uma copia do data na tabela
 		if((curr_data = table_get(table, keys[i])) == NULL){
+			printf("Get failed!\n");
 			return -1;
 		}
 		//cria uma entry com a copia
-		if((curr_entry = entry_create(keys[i], curr_data)) == NULL){
+		if((curr_entry = entry_create(strdup(keys[i]), curr_data)) == NULL){
+			printf("Entry create failed!\n");
 			return -1;
 		}
 
 		if((curr_message = (struct message_t*) malloc(sizeof(struct message_t))) == NULL){
+			printf("Message allocation failed!\n");
 			return -1;
 		}
 		//colocacao de campos predefinidos no message e a entry criada
@@ -268,10 +274,11 @@ int table_write_stt(int fd, struct table_t *table){
 		curr_message->c_type = CT_ENTRY;
 		curr_message->content.entry = curr_entry;
 		if((buff_size = message_to_buffer(curr_message, &curr_buff)) < 0){
+			printf("Message to buffer failed!\n");
 			free_message(curr_message);
 			return -1;
 		}
-
+		
 		//escrita para o ficheiro
 		if(write_all(fd, curr_buff, buff_size) < buff_size){
 			free_message(curr_message);
@@ -279,8 +286,8 @@ int table_write_stt(int fd, struct table_t *table){
 			return -1;
 		}
 		fsize += buff_size;
+		
 		//libertacao de memoria
-		//entry_destroy(curr_entry);
 		free_message(curr_message);
 		free(curr_buff);
 	}
@@ -302,15 +309,16 @@ int pmanager_store_table(struct pmanager_t *pmanager, struct table_t *table) {
 		perror("Table is NULL");
 		return -1;
 	}
+	
 
 	if((pmanager->sttfilename = malloc(strlen(pmanager->filename)*sizeof(char) + 4 + 1)) == NULL){
 		return -1;
 	}
-
+	
 	strcpy(pmanager->sttfilename, pmanager->filename);
 	strcat(pmanager->sttfilename, ".stt");
 
-	if((pmanager->sttfile = open(pmanager->sttfilename, O_WRONLY|O_CREAT,0640)) < 0) {
+	if((pmanager->sttfile = open(pmanager->sttfilename, O_WRONLY|O_CREAT|O_TRUNC|O_APPEND, S_IRUSR|S_IWUSR)) < 0) {
 		perror("Open error");
 		return -1;
 	}
@@ -320,7 +328,6 @@ int pmanager_store_table(struct pmanager_t *pmanager, struct table_t *table) {
 		perror("Stt write error");
 		return -1;
 	}
-
 	return write_size;
 }
 
@@ -341,13 +348,13 @@ int pmanager_rotate_log(struct pmanager_t *pmanager){
 
 	pmanager->sttfile = open(pmanager->sttfilename, O_RDONLY);
 	if(pmanager->sttfile < 0){
-		perror("Unable to open file");
+		perror("Unable to open stt file");
 		return -1;
 	}
 	//apagar ckp ou append?
-	pmanager->ckpfile = open(pmanager->ckpfilename, O_WRONLY);
+	pmanager->ckpfile = open(pmanager->ckpfilename, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 	if(pmanager->ckpfile < 0){
-		perror("Unable to open file");
+		perror("Unable to open ckp file");
 		return -1;
 	}
 
@@ -356,7 +363,7 @@ int pmanager_rotate_log(struct pmanager_t *pmanager){
 	//coloca o offset no inicio para fazer a leitura de stt
 	lseek(pmanager->sttfile, 0, SEEK_SET);
 
-	char* buff = malloc(stt_size*sizeof(char));
+	char* buff = malloc(stt_size);
 	if(buff == NULL){
 		return -1;
 	}
@@ -377,39 +384,115 @@ int pmanager_rotate_log(struct pmanager_t *pmanager){
 		free(buff);
 		return -1;
 	}
-
-	pmanager->logfile = open(pmanager->logfilename, O_WRONLY);
+	fdatasync(pmanager->ckpfile);
+	
+	pmanager->logfile = open(pmanager->logfilename, O_RDWR|O_TRUNC, S_IRUSR|S_IWUSR);
 	if(pmanager->logfile < 0){
-		perror("Unable to open file");
+		perror("Unable to open log file");
 		return -1;
 	}
+	
 	pmanager->currsize = 0;
-
 	free(buff);
+	
 	return 0;
 }
 
 //Coloca os dados do backup na tabela
 int write_to_table(int fd, struct table_t *table){
-	//TODO
-	char *buf = NULL;
-	int read_result = -1;
-	struct message_t *insert = NULL;
+	char *buff, *key, *data, *enc_data;
+	int val, datasize, enc_datasize, readresult;
+	short op_code = -1, keysize;
 	while(1 == 1){
-		if (buf != NULL) {
-			// limpar o buf
-			free(buf);
-			buf = NULL;
-		}
-		read_result = read_all(fd, &buf);
-		if (read_result == -1) {
+		//fim do ficheiro
+		readresult = read(fd, &op_code, sizeof(op_code));
+		if(readresult <= 0){
 			break;
 		}
-		insert = buffer_to_message(buf, read_result);
-		if(table_put(table, strdup(insert->content.entry->key), data_dup(insert->content.entry->value)) == -1) {
-			free_message(insert);
-			free(buf);
-			return -1;
+
+		//salta os 2 bytes do short do c_type visto apenas
+		//necessitarmos do opcode para fazer mudan�as na tabela
+		lseek(fd, sizeof(short), SEEK_CUR);
+		//valor de opcode
+		op_code = ntohs(op_code);
+
+		switch(op_code){
+			case OP_PUT :
+				//le o keysize
+				if(read(fd, &keysize, sizeof(keysize)) <= 0){
+					return -1;
+				}
+
+				keysize = ntohs(keysize);
+
+				if((key = malloc(keysize + 15)) == NULL){
+					return -1;
+				}
+				//le a key
+				if((readresult = read(fd, key, keysize)) <= 0){
+					free(key);
+					return -1;
+				}
+				key[keysize] = '\0';
+
+				//le o datasize
+				if(read(fd, &enc_datasize, sizeof(enc_datasize)) <= 0){
+					free(key);
+					return -1;
+				}
+
+				enc_datasize = ntohl(enc_datasize);
+
+				if((enc_data = malloc(enc_datasize)) == NULL){
+					free(key);
+					return -1;
+				}
+				//le o data
+				if(read(fd, enc_data, enc_datasize) <= 0){
+					free(key);
+					return -1;
+				}
+
+				base64_decode_alloc(enc_data, enc_datasize, &data, (size_t *) &datasize);
+
+				struct data_t* s_data = data_create2(datasize, data);
+				if(table_put(table, strdup(key), data_dup(s_data)) < 0){
+					perror("Table put error");
+				}
+				data_destroy(s_data);
+				free(key);
+				break;
+
+			case OP_DEL :
+
+				//le o keysize
+				if(read(fd, &keysize, sizeof(keysize)) <= 0){
+					return -1;
+				}
+
+				keysize = ntohs(keysize);
+
+				if((key = malloc(keysize + 15)) == NULL){
+					return -1;
+				}
+				//le a key
+				if((readresult = read(fd, key, keysize)) <= 0){
+					free(key);
+					return -1;
+				}
+				key[keysize] = '\0';
+
+				if(table_del(table, key) < 0){
+					perror("Key not found");
+					continue;
+				}
+
+				free(key);
+				break;
+
+			default :
+				perror("Invalid log operation");
+				continue;
 		}
 	}
 	return 0;
@@ -429,6 +512,16 @@ int pmanager_fill_state(struct pmanager_t *pmanager, struct table_t *table) {
 		perror("Table is NULL");
 		return -1;
 	}
+	
+	//Verifica se ckp tem conteudos
+	if((pmanager->ckpfile >= 0) && lseek(pmanager->ckpfile, 0, SEEK_END) > 0){
+		lseek(pmanager->ckpfile, 0, SEEK_SET);
+		if((pmanager->ckpfile = open(pmanager->ckpfilename, O_RDONLY)) < 0){
+			perror("ckp open error");
+			return -1;
+		}
+		write_to_table(pmanager->ckpfile, table);
+	}
 
 	//Verifica se log tem conteudos
 	if((pmanager->logfile >= 0) && lseek(pmanager->logfile, 0, SEEK_END) > 0){
@@ -436,15 +529,6 @@ int pmanager_fill_state(struct pmanager_t *pmanager, struct table_t *table) {
 		write_to_table(pmanager->logfile, table);
 	}
 
-	//Verifica se ckp tem conteudos
-	if((pmanager->ckpfile >= 0) && lseek(pmanager->ckpfile, 0, SEEK_END) > 0){
-		lseek(pmanager->ckpfile, 0, SEEK_SET);
-		write_to_table(pmanager->ckpfile, table);
-	}
-
-	//Verifica se stt tem conteudos
-	if((pmanager->sttfile >= 0) && lseek(pmanager->sttfile, 0, SEEK_END) > 0){
-		lseek(pmanager->sttfile, 0, SEEK_SET);
-		write_to_table(pmanager->sttfile, table);
-	}
+	table_print(table);
+	
 }

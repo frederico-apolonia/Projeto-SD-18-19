@@ -1,4 +1,8 @@
-/* GRUPO 34 */
+/*  Grupo 034
+ *  Francisco Grilo - 49497
+ *  Frederico Apolónia - 47892
+ *  Ye Yang - 49521
+ */
 #include "message.h"
 
 /* Altera os campos OP_CODE e CT_CODE de uma mensagem para

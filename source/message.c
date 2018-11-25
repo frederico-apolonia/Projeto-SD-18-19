@@ -1,3 +1,8 @@
+/*  Grupo 034
+ *  Francisco Grilo - 49497
+ *  Frederico Apolónia - 47892
+ *  Ye Yang - 49521
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -130,7 +135,6 @@ int buffer_entry(struct message_t *msg, char **msg_buff) {
 	// copy data encoded to buffer
 	strncpy(*msg_buff + buf_count, enc_data, enc_size);
 	
-	printf("ENCODE SIZE: %d\n", enc_size);
 	return buf_size;
 }
 
@@ -324,7 +328,6 @@ int msg_entry(struct message_t *msg, char *msg_buff){
 		return -1;
 	}
 	free(enc_data);
-	printf("ENCODE SIZE: %d\n", enc_datasize);
 	// create value
 	if ((new_data = data_create2(datasize, data)) == NULL) {
 		free(key);

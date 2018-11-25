@@ -1,3 +1,8 @@
+/*  Grupo 034
+ *  Francisco Grilo - 49497
+ *  Frederico Apolónia - 47892
+ *  Ye Yang - 49521
+ */
 #ifndef _TABLE_PRIVATE_H
 #define _TABLE_PRIVATE_H
 

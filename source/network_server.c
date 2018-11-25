@@ -1,3 +1,8 @@
+/*  Grupo 034
+ *  Francisco Grilo - 49497
+ *  Frederico Apolónia - 47892
+ *  Ye Yang - 49521
+ */
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -169,41 +174,6 @@ int network_main_loop(int listening_socket){
 	}
 	close(listening_socket);
 	return 0;
-	/*while ((client_socket = accept(listening_socket, (struct sockaddr *) &client, &size_client)) != -1){
-		printf("New client connection\n");
-		while(result = recv(client_socket, &cmessage, sizeof(char), MSG_PEEK) != -1) {
-			printf("Waiting for a command...\n");
-			struct message_t* message = NULL;
-			// reads message from client
-			if ((message = network_receive(client_socket)) != NULL) {
-				printf("New message received from the client...\n");
-				print_message(message); // for debugging purposes
-				// invoke will update message, returns -1 if something fails
-				msg_process_result = invoke(message);
-				if (msg_process_result == -1) {
-					printf("There was an error while processing the current message\n");
-					build_error_message(message);
-				}
-				printf("Message that is going to be sent to the client:\n");
-				print_message(message);
-				if ((send_msg_result = network_send(client_socket, message)) != -1) {
-					printf("Message was successfuly processed and sent to client\n");
-				} else {
-					printf("There was an error while sending this message to the client.\n");
-				}
-				free_message(message);
-				printf("Message freed and ready to receive next command\n");
-			}
-		}
-		if(result == -1) {
-		    perror("");
-		}
-		printf("Goodbye, client!\n");
-		close(client_socket);
-	}
-	perror("Error from client socket");
-	printf("Client socket: %d\n", client_socket);
-	return 0;*/
 }
 
 /* Esta função deve:
@@ -217,7 +187,6 @@ struct message_t *network_receive(int client_socket){
 	char *buffer = NULL;
 
 	result = read_all(client_socket, &buffer);
-	printf("network_receive=======================\n");
 	if(result < 0) {
 		/* ocorreu um erro a ler a resposta */
 		perror("Reading client buffer failed");
