@@ -153,9 +153,9 @@ int pmanager_destroy_clear(struct pmanager_t *pmanager){
 		remove(pmanager->sttfilename);
 		free(pmanager->sttfilename);
 	}
-s
-	if(pmanager->logfile >s 0){
-		close(pmanager->losgfile);
+
+	if(pmanager->logfile > 0){
+		close(pmanager->logfile);
 	}
 
 	if(pmanager->ckpfile > 0){
