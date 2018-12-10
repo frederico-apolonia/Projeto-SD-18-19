@@ -13,7 +13,7 @@ table-server:
 	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/table-server.c $(LIB_DIR)/server-lib.o -o $(BIN_DIR)/table-server
 
 table-client:
-	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/table-client.c $(LIB_DIR)/client-lib.o -o $(BIN_DIR)/table-client
+	$(CC) -g -Wall -pthread -I $(INC_DIR) $(SRC_DIR)/table-client.c $(LIB_DIR)/client-lib.o -lm -o $(BIN_DIR)/table-client
 
 test_data: $(OBJ_DIR)/*.o
 	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/test_data.c $(OBJ_DIR)/data.o -o $(BIN_DIR)/test_data
@@ -85,3 +85,4 @@ base64.o: $(SRC_DIR) $(INC_DIR)
 clean:
 	rm -f ./$(OBJ_DIR)/*.o
 	rm -f ./$(BIN_DIR)/*
+	rm -f ./$(LIB_DIR)/*

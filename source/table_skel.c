@@ -138,8 +138,5 @@ int invoke(struct message_t *msg) {
             result = -1;
             break;
     }
-    printf("Table State: \n");
-	table_print(ptable->table);
     return result;
-    
 }

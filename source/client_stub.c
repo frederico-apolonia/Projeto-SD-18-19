@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <string.h>
+
 #include "data.h"
 #include "entry.h"
 #include "network_client.h"
@@ -95,7 +96,14 @@ int rtables_disconnect(struct rtable_t *table){
  * Devolve 0 (ok, em adiÃ§Ã£o/substituiÃ§Ã£o) ou -1 (problemas).
  */
 int rtable_put(struct rtable_t *rtable, struct entry_t *entry){
-	if(rtable == NULL || entry == NULL){
+	
+	if(rtable == NULL) {
+		printf("DEBUG: rtable de entrada do put a NULL\n");
+		return -1;
+	}
+
+	if(entry == NULL) {
+		printf("DEBUG: entry de entrada do put a NULL\n");
 		return -1;
 	}
 
@@ -103,6 +111,7 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry){
 	//Usar o codigo 40
 	msg_pedido = (struct message_t*) malloc(sizeof(struct message_t));
 	if (msg_pedido == NULL){
+		printf("DEBUG: Malloc msg_pedido falhou\n");
 		return -1;
 	}
 	msg_pedido->opcode = OP_PUT;
@@ -111,7 +120,13 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry){
 	
 	msg_resposta = network_send_receive(rtable,msg_pedido);
 	free_message(msg_pedido);
-	if (msg_resposta == NULL || (msg_resposta->opcode) == OP_ERROR){
+	if (msg_resposta == NULL){
+		printf("DEBUG: Mensagem de resposta e NULL\n");
+		free_message(msg_resposta);
+		return -1;
+	}
+	if((msg_resposta->opcode) == OP_ERROR) {
+		printf("DEBUG: Mensagem de resposta e OP_ERROR\n");
 		free_message(msg_resposta);
 		return -1;
 	}

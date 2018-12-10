@@ -24,7 +24,7 @@
 
 static volatile int keep_looping = 1;
 
-#define NFDESC 10
+#define NFDESC 512
 #define TIMEOUT 5000
 
 void sigint_handler(int dummy) {
@@ -93,7 +93,6 @@ int network_main_loop(int listening_socket){
 	int client_socket, msg_process_result, send_msg_result, result, closed = 0, nfds, kfds, i;
 	char cmessage;
 
-	printf("Server is waiting for a new connection...\n");
 	for (i = 0; i < NFDESC; i++){
     		connections[i].fd = -1;
 	}
@@ -110,38 +109,38 @@ int network_main_loop(int listening_socket){
 		if((connections[0].revents & POLLIN) && (nfds < NFDESC)){
 			//coloca-se o cliente em connections
 			if ((connections[nfds].fd = accept(connections[0].fd, (struct sockaddr *) &client, &size_client)) > 0){
-				printf("New client connection\n");
 				connections[nfds].events = POLLIN;
 				nfds++;
 			}
 		}
 
 		for(i = 1; i < nfds; i++ ){
-			if(connections[i].revents & POLLIN){
-				printf("TEST\n");
+			if(connections[i].revents & POLLIN) {
 				struct message_t* message;
 				if ((message = network_receive(connections[i].fd)) == NULL) {
-					printf("Connection ended by client\n");
 					//Caso ocorra erro de leitura, fecha-se o socket do cliente
 					close(connections[i].fd);
 					connections[i].fd = -1;
 					closed = 1;
 					continue;
 				}else{
-					printf("New message received from the client...\n");
-					print_message(message); // for debugging purposes
+					//printf("DEBUG: New message received from the client...\n");
+					//print_message(message); // for debugging purposes
 					// invoke will update message, returns -1 if something fails
 					msg_process_result = invoke(message);
 					if (msg_process_result == -1) {
-						printf("There was an error while processing the current message\n");
+						printf("DEBUG: There was an error while processing the current message\n");
 						build_error_message(message);
+						printf("DEBUG: error message:\n");
+						print_message(message);
 					}
-					printf("Message that is going to be sent to the client:\n");
-					print_message(message);
+					//printf("DEBUG: Message that is going to be sent to the client:\n");
+					//print_message(message);
 					if ((send_msg_result = network_send(connections[i].fd, message)) > 0) {
-						printf("Message was successfuly processed and sent to client\n");
+						//printf("DEBUG: Message was successfuly processed and sent to client\n");
 					} else {
 						//caso ocorra erro de envio de mensagem, fecha-se o socket do cliente
+						printf("DEBUG: Message send failed, closing conn\n");
 						close(connections[i].fd);
 						connections[i].fd = -1;
 						closed = 1;
@@ -189,7 +188,7 @@ struct message_t *network_receive(int client_socket){
 	result = read_all(client_socket, &buffer);
 	if(result < 0) {
 		/* ocorreu um erro a ler a resposta */
-		perror("Reading client buffer failed");
+		printf("DEBUG: (network_server) Erro a ler do cliente\n");
 		free(buffer);
 		close(client_socket);
 		return NULL;

@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <math.h>
+#include <pthread.h>
+#include <sys/time.h>
 
 #include "message.h"
 #include "data.h"
@@ -16,8 +19,11 @@
 #include "client_stub.h"
 #include "client_stub-private.h"
 
-int FIRST_TRY = 1;
-
+int FIRST_TRY = 10;
+int sleep_finished = 0;
+pthread_mutex_t t_mutex;
+struct threads_result *thr_result;
+struct thread_params *thr_params;
 /*
 	Programa cliente para manipular tabela de hash remota.
 
@@ -54,27 +60,18 @@ void print_data_struct(struct data_t* data) {
 	printf("Data: %s\n", (char*) data->data);
 }
 
-int main(int argc, char **argv){
+void interactive_mode(char* args) {
 	struct rtable_t *rtable;
 	char* splitter = " ";
 	char input_utilizador[MAX_MSG];
 	struct data_t * data_result = NULL;
 	struct entry_t * entry_result = NULL;
 
-	/* Ignore SIGPIPE */
-	signal(SIGPIPE, SIG_IGN);
-
-	/* Testar os argumentos de entrada */
-	if (argc < 2){
-		printf("Exemplo de uso: ./table_client 10.101.148.144:54321\n");
-		return -1;
-	}	
-	
 	/* Iniciar instância do stub e Usar rtable_connect para estabelcer ligação ao servidor*/
-	rtable = rtables_connect(argv[1]);
+	rtable = rtables_connect(args);
 	if (rtable == NULL){
 		perror("Erro ao estabelecer ligacao com o servidor");
-		return -1;
+		return;
 	}
 
 	/* Fazer ciclo até que o utilizador resolva fazer "quit" */
@@ -83,7 +80,6 @@ int main(int argc, char **argv){
 		 if(FIRST_TRY < 0) {
 			break;
 		 }
-
 		printf(">>> "); // Mostrar a prompt para inserção de comando
 
 		/* Receber o comando introduzido pelo utilizador
@@ -103,7 +99,7 @@ int main(int argc, char **argv){
 		if(op_user == 0) {
 			break;
 		}
-		
+
 		int size = 0;
 
 		char** listgetKeys;
@@ -123,13 +119,13 @@ int main(int argc, char **argv){
 					printf("'del <key>'\n");
 					break;
 				}
-				
+
 				if (rtable_del(rtable, input_tokens[1]) == 0){
 						printf("O elemento %s foi bem eliminado\n", input_tokens[1]);
 				}else{
 						printf("O elemento nao foi eliminado (key not found ou problemas)\n");
 				}
-				break;	
+				break;
 			case OP_GET:
 				//input esperado pelo utilizador para esta operacao:Ex: "get <key>"
 				//vai ler o segundo valor inserido pelo utilizador no stdin
@@ -155,7 +151,7 @@ int main(int argc, char **argv){
 					printf("'put <key> <value>'\n");
 					break;
 				}
-		
+
 				data_result = data_create2(strlen(input_tokens[2]), strdup(input_tokens[2]));
 				if (data_result == NULL){
 					perror("Erro ao criar data_t");
@@ -166,10 +162,10 @@ int main(int argc, char **argv){
 				if (entry_result == NULL){
 					data_destroy(data_result);
 					perror("Erro ao criar entry_t");
-					break;						
+					break;
 				}
 				if (rtable_put(rtable,entry_result) == 0){
-					printf("O elemento %s foi inserido com sucesso\n", input_tokens[1]);						
+					printf("O elemento %s foi inserido com sucesso\n", input_tokens[1]);
 				}else{
 					printf("Problemas ao inserir o elemento %s\n",input_tokens[1]);
 				}
@@ -184,7 +180,7 @@ int main(int argc, char **argv){
                         printf(", %s",listgetKeys[count]);
                     }
 				}
-				printf("\n");	
+				printf("\n");
 				rtable_free_keys(listgetKeys);
 				break;
 			// quit
@@ -193,6 +189,142 @@ int main(int argc, char **argv){
 				break;
 		}
 	}
-  	return rtables_disconnect(rtable);
+  	rtables_disconnect(rtable);
 }
 
+//Torna um inteiro numa string
+void int_to_str(int src, char** dest){
+	int key_size = (int) ((ceil(log10(src))+1)*sizeof(char));
+	*dest = malloc(key_size);
+	sprintf(*dest, "%d", src);
+}
+
+void *thread_main(void *arg) {
+	struct rtable_t *rtable;
+	int num_puts_gets = 0, op = thr_params->op;
+	int num_key;
+	struct entry_t *entry;
+	struct data_t *data, *temp_data;
+	int value = getpid();
+	char* value_str, *key_str;
+	double time_spent = 0.0;
+	clock_t begin,end;
+	/* Conectar ao servidor */
+	rtable = rtables_connect(thr_params->address_port);
+	int stop_while = 0;
+
+	while(1 == 1) {
+		if(sleep_finished){
+			printf("\n\nDEBUG: Valor THREAD put/get %d\n", num_puts_gets);
+			// guardar resultados na estrutura result
+			pthread_mutex_lock(&t_mutex);
+			printf("DEBUG: Valor GLOBAL put/get %d\n", thr_result->num_put_get);
+			thr_result->num_put_get += num_puts_gets;
+			thr_result->time += time_spent;
+			printf("DEBUG: Valor GLOBAL put/get apos soma %d\n", thr_result->num_put_get);
+			pthread_mutex_unlock(&t_mutex);
+			pthread_exit(NULL);
+		}
+
+		// obter chave partilhada
+		pthread_mutex_lock(&t_mutex);
+		thr_params->key++;
+		num_key = (int) thr_params->key;
+		pthread_mutex_unlock(&t_mutex);
+
+		// tamanho da chave para colocar em string
+		int_to_str(num_key, &key_str);
+		switch (op) {
+			case OP_PUT:
+				int_to_str(value, &value_str);
+				data = data_create2(strlen(value_str),value_str);
+				entry = entry_create(key_str, data);
+				begin = clock();
+				if (rtable_put(rtable, entry) == -1) {
+					printf("DEBUG: Problemas no put com esta thread...\n\n");
+				}
+				end = clock();
+				time_spent += (double) (end - begin)/CLOCKS_PER_SEC;
+				break;
+
+			case OP_GET:
+				begin = clock();
+				temp_data = rtable_get(rtable, key_str);
+				end = clock();
+				time_spent += (double) (end - begin)/CLOCKS_PER_SEC;
+				data_destroy(temp_data);
+				break;
+
+			default:
+				break;
+		}
+		num_puts_gets++;
+	}
+
+}
+
+int main(int argc, char **argv){
+
+	/* Ignore SIGPIPE */
+	signal(SIGPIPE, SIG_IGN);
+
+	/* Testar os argumentos de entrada */
+	if (argc < 2){
+		printf("Exemplo de uso table interativo: ./table_client 10.101.148.144:54321\n");
+		return -1;
+	}
+
+	/* Modo interativo */
+	if(argc == 2) {
+		interactive_mode(argv[1]);
+	}
+	/* Modo automatico, nao e necessario verificar args de entrada */
+	else {
+		int num_threads, secs;
+		int first_key = 0;
+		pthread_t thr;
+		//mutex init
+		pthread_mutex_init(&t_mutex, NULL);
+
+		/* Inicializar os parametros da funcao da thread */
+		thr_params = (struct thread_params*) malloc(sizeof(struct thread_params));
+		thr_params->address_port = argv[1];
+		thr_params->op = strcmp(argv[2],"p") == 0 ? OP_PUT:OP_GET;
+		thr_params->key = first_key;
+
+		/* Recolher numero de segundos e de threads */
+		secs = atoi(argv[3]);
+		num_threads = atoi(argv[4]);
+
+		/* Inicializar estrutura do result */
+		thr_result = (struct threads_result*) malloc(sizeof(struct threads_result));
+
+		// lançar N threads
+		while (num_threads > 0) {
+			if(pthread_create(&thr, NULL, &thread_main, NULL) != 0) {
+				perror("\nThread não criada.\n");
+				exit(EXIT_FAILURE);
+			}
+			num_threads--;
+		}
+
+		/* Deixar as threads trabalhar enquando o processo principal dorme */
+		sleep(secs);
+		sleep_finished = 1;
+
+		/* Junçao das threads */
+		if(pthread_join(thr, NULL) != 0){
+			perror("Pthread join error");
+		}
+
+		printf("/***********************************************/\n");
+		printf("Resultados finais:\n");
+		printf("Numero de threads: %s Numero de segundos: %d\n", argv[4], secs);
+		printf("Numero de operacoes: %d\n", thr_result->num_put_get);
+		double avg_latency = thr_result->time / thr_result->num_put_get;
+		printf("Latencia media: %f\n", avg_latency);
+		free(thr_result);
+		thr_params->address_port = NULL;
+		free(thr_params);
+	}
+}

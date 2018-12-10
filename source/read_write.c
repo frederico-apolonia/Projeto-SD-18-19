@@ -133,25 +133,35 @@ int read_result_from_socket(int socket, char** buf, int* buf_size, int* cur_buf_
 
 /* Lê todos os bytes do socket */
 int read_all(int socket, char** buf) {
+	if(socket < 0) {
+		printf("DEBUG: (read_all) valor socket nao valido!\n");
+		return -1;
+	}
+
 	int buf_size = 4, curr_buf_pos = 0;
 	if((*buf = malloc(buf_size)) == NULL) {
+		printf("DEBUG: (read_all) Malloc falhou\n");
 		return -1;
 	}
 	// escreve o valor de opcode no buffer
 	short opcode;
 	if (read_n(socket, (char*) &opcode, sizeof(opcode)) == -1) {
+		printf("DEBUG: (read_all) Leitura do opcode falhou\n");
 		return -1;
 	}
 	append_into_buffer(buf, &curr_buf_pos, (char*) &opcode, sizeof(opcode));
 	// escreve o valor de c_type no buffer
 	short c_type;
 	if (read_n(socket, (char*) &c_type, sizeof(c_type)) == -1) {
+		printf("DEBUG: (read_all) Leitura do c_type falhou\n");
 		return -1;
 	}
 
 	append_into_buffer(buf, &curr_buf_pos, (char*) &c_type, sizeof(c_type));
 
-	switch (ntohs(c_type))
+	short local_c_type = ntohs(c_type);
+
+	switch (local_c_type)
 	{
 		case CT_NONE:
 			// nao ha mais nada para copiar para o buffer no ct_none
@@ -192,7 +202,7 @@ int read_all(int socket, char** buf) {
 			break;
 
 		default:
-			perror("INVALID C_TYPE");
+			printf("DEBUG: (read_write) Invalid C_TYPE: %d \n", local_c_type);
 			return -1;
 	}
 	return buf_size;
@@ -210,7 +220,7 @@ int write_all (int socket, char* buf, int length) {
 			if(errno == EINTR){
 				continue;
 			}
-			perror("Write failed");
+			printf("DEBUG: (read_write) Write failed\n");
 			return write_result;
 		}
 		buf += write_result;

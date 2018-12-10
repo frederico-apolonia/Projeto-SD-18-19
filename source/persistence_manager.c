@@ -66,7 +66,7 @@ struct pmanager_t *pmanager_create(char *filename, int logsize){
 	strcpy(pmanager->ckpfilename, filename);
 	strcat(pmanager->ckpfilename, ".ckp");
 
-	if((pmanager->logfile = open(pmanager->logfilename,O_RDWR|O_CREAT,S_IRUSR|S_IWUSR)) < 0){
+	if((pmanager->logfile = open(pmanager->logfilename,O_RDWR|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR)) < 0){
 		perror("Log open error");
 		free(pmanager->logfilename);
 		free(pmanager->ckpfilename);
@@ -222,7 +222,7 @@ int pmanager_log(struct pmanager_t *pmanager, struct message_t *op){
 			free(msg_buf);
 			return -1;
 		}else{
-  		pmanager->logfile = open(pmanager->logfilename, O_WRONLY | O_APPEND);
+  			//pmanager->logfile = open(pmanager->logfilename, O_WRONLY | O_APPEND);
 			if(pmanager->logfile < 0){
 				perror("Unable to open log");
 				free(msg_buf);
@@ -328,6 +328,10 @@ int pmanager_store_table(struct pmanager_t *pmanager, struct table_t *table) {
 		perror("Stt write error");
 		return -1;
 	}
+	// close sttfile
+	close(pmanager->sttfile);
+	// indica que o ficheiro do stt esta fechado
+	pmanager->sttfile = -1;
 	return write_size;
 }
 
@@ -340,21 +344,27 @@ int pmanager_rotate_log(struct pmanager_t *pmanager){
 		perror("Pmanager is NULL");
 		return -1;
 	}
-
-	if(pmanager->ckpfile < 0 || pmanager->logfile < 0 || pmanager->sttfile < 0){
-		perror("Invalid file");
-		return -1;
+	
+	// fechar o ckpfile que estiver aberto
+	if(pmanager->ckpfile > -1) {
+		close(pmanager->ckpfile);
+		pmanager->ckpfile = -1;
+	}
+	// fechar o sttfile que estiver aberto
+	if(pmanager->sttfile > -1) {
+		close(pmanager->sttfile);
+		pmanager->sttfile = -1;
+	}
+	// fechar o logfile que estiver aberto
+	if(pmanager->logfile > -1) {
+		close(pmanager->logfile);
+		pmanager->logfile = -1;
 	}
 
+	// abrir o sttfile
 	pmanager->sttfile = open(pmanager->sttfilename, O_RDONLY);
 	if(pmanager->sttfile < 0){
 		perror("Unable to open stt file");
-		return -1;
-	}
-	//apagar ckp ou append?
-	pmanager->ckpfile = open(pmanager->ckpfilename, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
-	if(pmanager->ckpfile < 0){
-		perror("Unable to open ckp file");
 		return -1;
 	}
 
@@ -376,8 +386,19 @@ int pmanager_rotate_log(struct pmanager_t *pmanager){
 	}
 	//coloca o offset no inicio, depois do read o ter movido
 	lseek(pmanager->sttfile, 0, SEEK_SET);
-	//write_all(pmanager->ckpfile, buff, stt_size);
+	
+	// fecha o stt e indicar esta fechado
+	close(pmanager->sttfile);
+	pmanager->sttfile = -1;
+	// remove stt
+	remove(pmanager->sttfilename);
 
+	// abrir e truncar ckp
+	pmanager->ckpfile = open(pmanager->ckpfilename, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+	if(pmanager->ckpfile < 0){
+		perror("Unable to open ckp file");
+		return -1;
+	}
 	//escreve buff para ckp
 	if(write_all(pmanager->ckpfile, buff, stt_size) < stt_size){
 		perror("Ckp write error");
@@ -385,7 +406,13 @@ int pmanager_rotate_log(struct pmanager_t *pmanager){
 		return -1;
 	}
 	fdatasync(pmanager->ckpfile);
+	// fechar ckp e indicar que esta fechado
+	close(pmanager->ckpfile);
+	pmanager->ckpfile = -1;
 	
+	// fechar o pmanager para o abrir truncado
+	close(pmanager->logfile);
+	// abrir pmanager truncado
 	pmanager->logfile = open(pmanager->logfilename, O_RDWR|O_TRUNC, S_IRUSR|S_IWUSR);
 	if(pmanager->logfile < 0){
 		perror("Unable to open log file");

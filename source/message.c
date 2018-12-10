@@ -251,6 +251,7 @@ int message_to_buffer(struct message_t *msg, char **msg_buf){
 			
 			return buffer_none(msg, msg_buf);
 		default :
+			printf("L254 ; message.c %d\n", msg->c_type);
 			printf(" INVALID C_TYPE\n");
 			return -1;
 	}
@@ -435,6 +436,7 @@ struct message_t *buffer_to_message(char *msg_buf, int msg_size){
 			return newMessage;
 
 		default :
+			printf("L439 ; message.c ; %d\n", newMessage->c_type);
 			printf(" INVALID C_TYPE\n");
 			return NULL;
 	}
@@ -481,6 +483,7 @@ void free_message (struct message_t *msg){
 			break;
 
 		default :
+			printf("L486 ; message.c ; %d\n", msg->c_type);
 			printf(" INVALID C_TYPE\n");
 	}
 }
