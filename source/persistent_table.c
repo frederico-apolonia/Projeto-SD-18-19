@@ -11,6 +11,8 @@
 #include "persistent_table-private.h"
 #include "persistence_manager.h"
 
+extern int KEEP_LOGS;
+
 int persist_message(struct ptable_t *ptable, struct message_t *op) {
     int result = -1;
     while (1 == 1) {
@@ -56,8 +58,14 @@ struct ptable_t *ptable_create(struct table_t *table, struct pmanager_t *pmanage
  * todos os ficheiros utilizados pela tabela.
  */
 void ptable_destroy(struct ptable_t *ptable) {
-    if (pmanager_destroy_clear(ptable->pmanager) == -1) {
-        printf("\n\nThere was an error while destroying pmanager!\n\n");
+    if(KEEP_LOGS > 0) {
+        if(pmanager_destroy(ptable->pmanager) == -1) {
+            printf("\n\nThere was an error while destroying pmanager!\n\n");
+        }
+    } else {
+        if (pmanager_destroy_clear(ptable->pmanager) == -1) {
+            printf("\n\nThere was an error while destroying pmanager!\n\n");
+        }
     }
     table_destroy(ptable->table);
     free(ptable);

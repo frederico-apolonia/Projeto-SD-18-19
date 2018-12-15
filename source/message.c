@@ -376,8 +376,19 @@ int msg_result(struct message_t *msg, char *msg_buff) {
 }
 
 struct message_t *buffer_to_message(char *msg_buf, int msg_size){
+	if (msg_buf == NULL) {
+		// printf("DEBUG MSG_BUF É NULL\n");
+		return NULL;
+	}
+
+	if (msg_size < 0) {
+		// printf("DEBUG MSG SIZE < 0\n");
+		return NULL;
+	}
+
 	struct message_t *newMessage = (struct message_t *) malloc(sizeof(struct message_t));
 	if(newMessage == NULL){
+		// printf("DEBUG ERRO A ALOCAR MEM\n");
 		return NULL;
 	}
 	memcpy(&newMessage->opcode, msg_buf, 2);
@@ -436,8 +447,6 @@ struct message_t *buffer_to_message(char *msg_buf, int msg_size){
 			return newMessage;
 
 		default :
-			printf("L439 ; message.c ; %d\n", newMessage->c_type);
-			printf(" INVALID C_TYPE\n");
 			return NULL;
 	}
 }

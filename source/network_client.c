@@ -19,6 +19,7 @@
 #include "read_write.h"
 
 extern pthread_mutex_t t_mutex;
+extern pthread_mutex_t t_ftry_mutex;
 extern int FIRST_TRY;
 
 /* Esta função deve:
@@ -50,11 +51,11 @@ int network_connect(struct rtable_t* rtable){
 	
 	// Estabelece conexão com o servidor definido na estrutura server
     if (connect(rtable->sockfd,(struct sockaddr *) &rtable->sockaddr, sizeof(rtable->sockaddr)) < 0) {
-		perror("DEBUG: Erro ao conectar-se ao servidor");
+		// perror("DEBUG: Erro ao conectar-se ao servidor");
 		close(rtable->sockfd);
 		return -1;
     }
-	printf("DEBUG: Thread connected.\n");
+	// printf("DEBUG: Thread connected.\n");
 	return 0;
      
 	
@@ -75,42 +76,41 @@ struct message_t *network_send_receive(struct rtable_t * rtable,
 	int size, result;
 	
 	if ((size = message_to_buffer(msg,&msg_enviada)) == -1){
-		perror ("Erro ao serializar a msg");
+		// perror ("Erro ao serializar a msg");
 		close(rtable->sockfd);
 		return NULL;					   
 	}
 	
-	pthread_mutex_lock(&t_mutex);
+	pthread_mutex_lock(&t_ftry_mutex);
 	int f_try = FIRST_TRY;
-	pthread_mutex_unlock(&t_mutex);
+	pthread_mutex_unlock(&t_ftry_mutex);
 
 	result = write_all(rtable->sockfd, msg_enviada, 1);
 	while(f_try >= 0) {
 		result += write_all(rtable->sockfd, msg_enviada+1, size-1);
 		if (result != size) {
-			printf("DEBUG: Valor resultado escrita %d ; Valor do size: %d\n", result, size);
-			printf("DEBUG: Erro ao enviar dados para o servidor!\n");
-			sleep(RETRY_TIME);
-
-			network_close(rtable);
-			if(connect(rtable->sockfd,(struct sockaddr *) &rtable->sockaddr, sizeof(rtable->sockaddr))< 0) {
-				printf("DEBUG: Thread nao se conseguiu reconnectar ao server... Bye.\n");
+			printf("DEBUG: ERRO A ESCREVER MSG\n");
+			if (f_try == 0) {
 				return NULL;
-			}(rtable->sockfd,(struct sockaddr *) &rtable->sockaddr, sizeof(rtable->sockaddr));
+			}
+			// perror("DEBUG (network_client)");
+			// printf("DEBUG: Valor resultado escrita %d ; Valor do size: %d\n", result, size);
+			// printf("DEBUG: Erro ao enviar dados para o servidor!\n");
+			sleep(RETRY_TIME);
+			
+			network_close(rtable);
+			int network_reconnect = network_connect(rtable);
 
-			pthread_mutex_lock(&t_mutex);
+			if(network_reconnect < 0) {
+				// printf("DEBUG: Thread nao se conseguiu reconnectar ao server... Bye.\n");
+				return NULL;
+			} else {
+				// printf("DEBUG: Thread reconnected!\n");
+			}
+
+			pthread_mutex_lock(&t_ftry_mutex);
 			FIRST_TRY--;
-			pthread_mutex_unlock(&t_mutex);
-			// if (f_try > 0) {
-				
-			// } else {
-			// 	printf("DEBUG: Erro ao enviar dados para o servidor!\n");
-			// 	free(msg_enviada);
-			// 	pthread_mutex_lock(&t_mutex);
-			// 	FIRST_TRY--;
-			// 	pthread_mutex_unlock(&t_mutex);
-			// 	return NULL;
-			// }
+			pthread_mutex_unlock(&t_ftry_mutex);
 		} else break;
 	}
 	free(msg_enviada);
@@ -118,43 +118,35 @@ struct message_t *network_send_receive(struct rtable_t * rtable,
 	//printf("À espera de resposta do servidor ...\n");
 	// receber msg do servidor
 
-	pthread_mutex_lock(&t_mutex);
+	pthread_mutex_lock(&t_ftry_mutex);
 	int first_try = FIRST_TRY;
-	pthread_mutex_unlock(&t_mutex);
+	pthread_mutex_unlock(&t_ftry_mutex);
 
 	while(first_try >= 0) {
 		size = read_all(rtable->sockfd, &msg_recebida);
 		if (size < 0) {
-			printf("DEBUG: Cliente nao recebeu bem...\n");
+			// printf("DEBUG: ERRO A RECEBER MSG\n");
+			if (first_try == 0) {
+				return NULL;
+			}
+			pthread_mutex_lock(&t_ftry_mutex);
+			FIRST_TRY--;
+			pthread_mutex_unlock(&t_ftry_mutex);
+
+			// perror("DEBUG (network_client)");
+			// printf("DEBUG: Cliente nao recebeu bem...\n");
 
 			sleep(RETRY_TIME);
 				
 			network_close(rtable);
-			if(connect(rtable->sockfd,(struct sockaddr *) &rtable->sockaddr, sizeof(rtable->sockaddr))< 0) {
-				printf("DEBUG: Thread nao se conseguiu reconnectar ao server... Bye.\n");
+			int network_reconnect = network_connect(rtable);
+
+			if(network_reconnect < 0) {
+				// printf("DEBUG: Thread nao se conseguiu reconnectar ao server... Bye.\n");
 				return NULL;
 			}
+			// printf("DEBUG: Thread reconnected!\n");
 
-			pthread_mutex_lock(&t_mutex);
-			FIRST_TRY--;
-			pthread_mutex_unlock(&t_mutex);
-			
-			// if (first_try > 0) {
-			// 	sleep(RETRY_TIME);
-				
-			// 	network_close(rtable);
-			// 	connect(rtable->sockfd,(struct sockaddr *) &rtable->sockaddr, sizeof(rtable->sockaddr));
-
-			// 	pthread_mutex_lock(&t_mutex);
-			// 	FIRST_TRY--;
-			// 	pthread_mutex_unlock(&t_mutex);
-			// } else {
-			// 	printf("Erro ao receber dados do servidor!\n");
-			// 	pthread_mutex_lock(&t_mutex);
-			// 	FIRST_TRY--;
-			// 	pthread_mutex_unlock(&t_mutex);
-			// 	return NULL;
-			// }
 		} else break;
 	}
 	msg_result = buffer_to_message(msg_recebida,size);

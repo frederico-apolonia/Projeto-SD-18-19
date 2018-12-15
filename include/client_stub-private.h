@@ -19,7 +19,7 @@ struct rtable_t{
 };
 
  struct thread_params {
-	const char *address_port;
+	char *address_port;
 	int op;
 	int key;
 };

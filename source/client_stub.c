@@ -31,19 +31,18 @@ int get_num_keys(char** keys) {
 char** tokenizer(char* string, char* seperator, int* counter) {
 	*counter = 0;
 	char** result = (char**) malloc(sizeof(char*));
-	char* tmp = strtok(string, seperator);
-
+	char* rest = string;
+	char* tmp = strtok_r(string, seperator, &rest);
 
 	while(1 == 1) {
 		result = realloc(result, (sizeof(char*) * (*counter + 1)));
 		result[*counter] = tmp;
-		tmp = strtok(NULL, seperator);
+		tmp = strtok_r(NULL, seperator, &rest);
 		if(tmp == NULL) {
 			break;
 		}
 		*counter += 1;
 	}
-
 	*counter += 1;
 
 	return result;
@@ -54,7 +53,7 @@ char** tokenizer(char* string, char* seperator, int* counter) {
  * address_port Ã© uma string no formato <hostname>:<port>.
  * retorna NULL em caso de erro
  */
-struct rtable_t *rtables_connect(const char *address_port){
+struct rtable_t *rtables_connect(char *address_port){
 	int sockfd;
 	struct rtable_t* rtable;
 	int size_adr_port;
@@ -62,19 +61,22 @@ struct rtable_t *rtables_connect(const char *address_port){
 	char** address_tokenized = tokenizer(strdup(address_port), ":", &size_adr_port);
 
 	if(size_adr_port != 2) {
+		printf("%d, %s\n", size_adr_port, address_port);
 		printf("Table-client must be invoked like this:\n");
 		printf("./table-client <ip>:<port>\n");
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 
 	if ((rtable = malloc(sizeof(struct rtable_t))) == NULL) {
-		return NULL;
+		printf("DEBUG FAILED TO MALLOC\n");
+		exit(EXIT_FAILURE);
 	}
 	rtable->ip = address_tokenized[0];
 	rtable->port = address_tokenized[1];
 
 	if((network_connect(rtable)) == -1 ) {
 		free(rtable);
+		printf("DEBUG: Failed to connect\n");
 		return NULL;
 	}
 
@@ -121,12 +123,10 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry){
 	msg_resposta = network_send_receive(rtable,msg_pedido);
 	free_message(msg_pedido);
 	if (msg_resposta == NULL){
-		printf("DEBUG: Mensagem de resposta e NULL\n");
 		free_message(msg_resposta);
 		return -1;
 	}
 	if((msg_resposta->opcode) == OP_ERROR) {
-		printf("DEBUG: Mensagem de resposta e OP_ERROR\n");
 		free_message(msg_resposta);
 		return -1;
 	}
@@ -147,6 +147,7 @@ struct data_t *rtable_get(struct rtable_t *rtable, char *key){
 	//Usar o codigo 30
 	msg_pedido = (struct message_t*) malloc(sizeof(struct message_t));
 	if (msg_pedido == NULL){
+		printf("Falhou alloc msg pedido\n");
 		return NULL;
 	}
 	msg_pedido->opcode = OP_GET;
@@ -157,16 +158,21 @@ struct data_t *rtable_get(struct rtable_t *rtable, char *key){
 	free_message(msg_pedido);
 	
 	// resposta
-	if (msg_resposta == NULL || (msg_resposta->opcode) == OP_ERROR){
-		free_message(msg_resposta);
-		printf("ERROR: Server error.\n");
+	if (msg_resposta == NULL) {
+		// printf("ERROR: Server error.\n");
 		return NULL;
+	} 
+	if (msg_resposta->opcode == OP_ERROR){
+		free_message(msg_resposta);
+		struct data_t *result = data_create(1);
+		return result;
 	}
 	// chave nao existe
 	if (msg_resposta->content.value->datasize == 0) {
-		printf("ERROR: Key not found!\n");
+		// printf("ERROR: Key not found!\n");
 		free_message(msg_resposta);
-		return NULL;
+		struct data_t *result = data_create(1);
+		return result;
 	}
 
 	struct data_t *result = data_dup(msg_resposta->content.value);

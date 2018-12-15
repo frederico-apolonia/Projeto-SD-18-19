@@ -99,7 +99,7 @@ struct data_t *table_get(struct table_t *table, char *key){
 	int hashIndex = hash(key,table->size);
 	struct entry_t *entry = list_get(table->lists[hashIndex],key);
 	if(entry == NULL || entry->value == NULL){
-		printf("ENTRY ERRO\n");
+		// printf("ENTRY ERRO\n");
 		return NULL;
 	}
 

@@ -13,7 +13,7 @@ struct rtable_t;
  * address_port é uma string no formato <hostname>:<port>.
  * retorna NULL em caso de erro
  */
-struct rtable_t *rtables_connect(const char *address_port);
+struct rtable_t *rtables_connect(char *address_port);
 
 /* Termina a associação entre o cliente e a tabela remota, fechando a 
  * ligação com o servidor e libertando toda a memória local.

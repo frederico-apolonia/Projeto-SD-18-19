@@ -19,6 +19,7 @@
 #include "persistent_table.h"
 
 struct ptable_t *ptable;
+int KEEP_LOGS = 0;
 
 void close_server(int listening_socket) {
 	network_server_close(listening_socket);
@@ -33,9 +34,10 @@ int main(int argc, char **argv){
 
 	/* Testar os argumentos de entrada */
 	/* testar se o numero de argumentos esta correto */
-	if (argc != 5) {
-		printf("Usage: table-server <port> <n_lists> <log-filename> <log-size>\n");
-		printf("Exemple: ./table_server 54321 6 server-logs 64000\n");
+	if (argc != 6) {
+		printf("Usage: table-server <port> <n_lists> <log-filename> <log-size> <keep-logs>\n");
+		printf("Keep logs: >= 1 keeps log and checkpoint file\n");
+		printf("Exemple: ./table_server 54321 6 server-logs 64000 1\n");
 		return -1;
 	}
 
@@ -55,6 +57,7 @@ int main(int argc, char **argv){
 		perror("Log size must be higher than 0!");
 		return -1;
 	}
+	KEEP_LOGS = atoi(argv[5]);
 
 	/* inicialização da camada de rede */
 	listening_socket = network_server_init(server_port);

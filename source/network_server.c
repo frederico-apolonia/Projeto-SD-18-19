@@ -84,14 +84,15 @@ int network_main_loop(int listening_socket){
 	if  (listening_socket < 0) {
 		return -1;
 	}
-	struct pollfd *connections = malloc(sizeof(struct pollfd*)*NFDESC);
+	struct pollfd *connections = (struct pollfd*)malloc(sizeof(struct pollfd)*NFDESC);
 	if(connections == NULL){
 		return -1;
 	}
 	struct sockaddr_in client;
 	socklen_t size_client = sizeof(struct sockaddr);
-	int client_socket, msg_process_result, send_msg_result, result, closed = 0, nfds, kfds, i;
-	char cmessage;
+	int client_socket, msg_process_result, send_msg_result, result, closed = 0, nfds, kfds, i,j;
+	int current_size,end_server = 1,new_sd = -1;
+	char cmessage,c;
 
 	for (i = 0; i < NFDESC; i++){
     		connections[i].fd = -1;
@@ -103,7 +104,7 @@ int network_main_loop(int listening_socket){
   	nfds = 1;
 
 	signal(SIGINT, sigint_handler);
-
+	
 	while((kfds = poll(connections, nfds, TIMEOUT)) >= 0 && keep_looping){
 		//caso haja uma nova conexao
 		if((connections[0].revents & POLLIN) && (nfds < NFDESC)){
@@ -113,26 +114,31 @@ int network_main_loop(int listening_socket){
 				nfds++;
 			}
 		}
-
+		
 		for(i = 1; i < nfds; i++ ){
+			if(recv(connections[i].fd, &c, 1, MSG_PEEK | MSG_DONTWAIT) == 0){
+						// printf("CONNECTION CLOSED\n");
+						closed = 1;
+						close(connections[i].fd);
+                        connections[i].fd = -1;
+                        connections[i].events = 0;
+                        nfds--;
+                        break;
+            }
 			if(connections[i].revents & POLLIN) {
 				struct message_t* message;
 				if ((message = network_receive(connections[i].fd)) == NULL) {
-					//Caso ocorra erro de leitura, fecha-se o socket do cliente
-					close(connections[i].fd);
-					connections[i].fd = -1;
-					closed = 1;
-					continue;
+					
 				}else{
 					//printf("DEBUG: New message received from the client...\n");
 					//print_message(message); // for debugging purposes
 					// invoke will update message, returns -1 if something fails
 					msg_process_result = invoke(message);
 					if (msg_process_result == -1) {
-						printf("DEBUG: There was an error while processing the current message\n");
+						// printf("DEBUG: There was an error while processing the current message\n");
 						build_error_message(message);
-						printf("DEBUG: error message:\n");
-						print_message(message);
+						// printf("DEBUG: error message:\n");
+						// print_message(message);
 					}
 					//printf("DEBUG: Message that is going to be sent to the client:\n");
 					//print_message(message);
@@ -140,19 +146,21 @@ int network_main_loop(int listening_socket){
 						//printf("DEBUG: Message was successfuly processed and sent to client\n");
 					} else {
 						//caso ocorra erro de envio de mensagem, fecha-se o socket do cliente
-						printf("DEBUG: Message send failed, closing conn\n");
+						/*printf("DEBUG: Message send failed, closing conn\n");
 						close(connections[i].fd);
 						connections[i].fd = -1;
 						closed = 1;
-						continue;
+						break;*/
 					}
 				}
+				free_message(message);
 			}
 
 			if((connections[i].revents & POLLHUP) || (connections[i].revents & POLLERR)){
 				close(connections[i].fd);
 				connections[i].fd = -1;
 				closed = 1;
+				break;
 			}
 		}
 		//se houver fecho de alguma conexao, as posicoes dos clientes
@@ -161,16 +169,18 @@ int network_main_loop(int listening_socket){
 			closed = 0;
 			int j, k;
 			for(j = 0; j < nfds; j++){
+				// printf("DEBUG: CONNECTIONS.FD = %d | POS: %d\n",connections[j].fd,j);
 				if(connections[j].fd == -1){
-					for(k = j; j < nfds; j++){
-						connections[j].fd = connections[j+1].fd;
+					for(k = j; k < nfds; k++){
+						connections[k].fd = connections[k+1].fd;
 					}
-					i--;
+					j--;
 					nfds--;
 				}
 			}
 		}
 	}
+	free(connections);
 	close(listening_socket);
 	return 0;
 }
@@ -188,7 +198,7 @@ struct message_t *network_receive(int client_socket){
 	result = read_all(client_socket, &buffer);
 	if(result < 0) {
 		/* ocorreu um erro a ler a resposta */
-		printf("DEBUG: (network_server) Erro a ler do cliente\n");
+		// printf("DEBUG: (network_server) Erro a ler do cliente\n");
 		free(buffer);
 		close(client_socket);
 		return NULL;
