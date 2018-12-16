@@ -64,7 +64,7 @@ int network_server_init(short port){
 		return -1;
 	}
 	// listening socket
-	if (listen(sockfd, 0) < 0){
+	if (listen(sockfd, 512) < 0){
         perror("Erro ao executar listen");
         close(sockfd);
         return -1;
