@@ -56,9 +56,12 @@ void table_destroy(struct table_t *table){
 }
 
 int table_put(struct table_t *table, char *key, struct data_t *value){
+	if(key == NULL) {
+		printf("WTF??");
+	}
 	int hashIndex = hash(key,table->size);
 	struct entry_t *checkEntry = list_get(table->lists[hashIndex],key);
-	struct entry_t *newEntry = entry_create(key,value);
+	struct entry_t *newEntry = entry_create(strdup(key),data_dup(value));
 	if(newEntry == NULL){
 		return -1;
 	}
@@ -94,6 +97,10 @@ int table_put(struct table_t *table, char *key, struct data_t *value){
 struct data_t *table_get(struct table_t *table, char *key){
 	if(table == NULL) {
 		printf("TABLE IS NULL!\n");
+		return NULL;
+	}
+	if(key == NULL) {
+		printf("KEY IS NULL!\n");
 		return NULL;
 	}
 	int hashIndex = hash(key,table->size);
@@ -175,6 +182,7 @@ void table_print(struct table_t *table){
 
 int hash(char* str, int size){
 	int i,val = 0;
+	int str_len = strlen(str);
 	for(i = 0; i < strlen(str); i++){
 		val+= (int) str[i];
 	}

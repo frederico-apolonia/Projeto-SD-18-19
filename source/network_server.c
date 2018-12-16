@@ -15,6 +15,7 @@
 #include <poll.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <pthread.h>
 
 #include "message.h"
 #include "table_skel.h"
@@ -23,9 +24,10 @@
 #include "message-private.h"
 
 static volatile int keep_looping = 1;
+int stop_threads = 0;
 
-#define NFDESC 512
-#define TIMEOUT 5000
+pthread_mutex_t t_mutex_write;
+pthread_mutex_t t_mutex_stop;
 
 void sigint_handler(int dummy) {
     keep_looping = 0;
@@ -72,6 +74,49 @@ int network_server_init(short port){
 	return sockfd;
 }
 
+void *thread_main(void* arg){
+	//se nao funcionar mete atoi
+	int client_socket =  *((int*) arg);
+	int send_msg_result = 0, msg_process_result = 0;
+	char cmessage;
+	int result;
+	pthread_mutex_lock(&t_mutex_stop);
+	int stop_while = stop_threads;
+	pthread_mutex_unlock(&t_mutex_stop);
+
+	while((result = recv(client_socket, &cmessage, sizeof(char), MSG_PEEK)) != -1 && !stop_while ) {
+		// printf("Waiting for a command...\n");
+		struct message_t* message = NULL;
+		// reads message from client
+		if ((message = network_receive(client_socket)) != NULL) {
+			// printf("New message received from the client...\n");
+			// print_message(message); // for debugging purposes
+			// invoke will update message, returns -1 if something fails
+			msg_process_result = invoke(message);
+			if (msg_process_result == -1) {
+				// printf("There was an error while processing the current message\n");
+				build_error_message(message);
+			}
+			// printf("Message that is going to be sent to the client:\n");
+			// print_message(message);
+			if ((send_msg_result = network_send(client_socket, message)) != -1) {
+				// printf("Message was successfuly processed and sent to client\n");
+			} else {
+				// printf("There was an error while sending this message to the client.\n");
+			}
+			free_message(message);
+			// printf("Message freed and ready to receive next command\n");
+		}
+
+		pthread_mutex_lock(&t_mutex_stop);
+		stop_while = stop_threads;
+		pthread_mutex_unlock(&t_mutex_stop);
+	}
+	// se saiu do while entao tem de fechar a thread
+	network_server_close(client_socket);
+	pthread_exit(NULL);
+}
+
 /* Esta função deve:
  * - Aceitar uma conexão de um cliente;
  * - Receber uma mensagem usando a função network_receive;
@@ -80,107 +125,61 @@ int network_server_init(short port){
  * - Enviar a resposta ao cliente usando a função network_send.
  */
 int network_main_loop(int listening_socket){
-
+	pthread_t pthread;
+	pthread_attr_t pthread_attr;
+	socklen_t size_client = sizeof(struct sockaddr);
+	int new_socket_fd = 0;
+	pthread_mutex_init(&t_mutex_write, NULL);
+	pthread_mutex_init(&t_mutex_stop, NULL);
+	struct sockaddr_in client_address;
 	if  (listening_socket < 0) {
 		return -1;
 	}
-	struct pollfd *connections = (struct pollfd*)malloc(sizeof(struct pollfd)*NFDESC);
-	if(connections == NULL){
-		return -1;
-	}
-	struct sockaddr_in client;
-	socklen_t size_client = sizeof(struct sockaddr);
-	int client_socket, msg_process_result, send_msg_result, result, closed = 0, nfds, kfds, i,j;
-	int current_size,end_server = 1,new_sd = -1;
-	char cmessage,c;
 
-	for (i = 0; i < NFDESC; i++){
-    		connections[i].fd = -1;
-	}
-
- 	connections[0].fd = listening_socket;  // Vamos detetar eventos na welcoming socket
- 	connections[0].events = POLLIN;
-
-  	nfds = 1;
-
+	/* armar o sinal para apanhar o ctrl c */
 	signal(SIGINT, sigint_handler);
 	
-	while((kfds = poll(connections, nfds, TIMEOUT)) >= 0 && keep_looping){
-		//caso haja uma nova conexao
-		if((connections[0].revents & POLLIN) && (nfds < NFDESC)){
-			//coloca-se o cliente em connections
-			if ((connections[nfds].fd = accept(connections[0].fd, (struct sockaddr *) &client, &size_client)) > 0){
-				connections[nfds].events = POLLIN;
-				nfds++;
-			}
-		}
-		
-		for(i = 1; i < nfds; i++ ){
-			if(recv(connections[i].fd, &c, 1, MSG_PEEK | MSG_DONTWAIT) == 0){
-						// printf("CONNECTION CLOSED\n");
-						closed = 1;
-						close(connections[i].fd);
-                        connections[i].fd = -1;
-                        connections[i].events = 0;
-                        nfds--;
-                        break;
-            }
-			if(connections[i].revents & POLLIN) {
-				struct message_t* message;
-				if ((message = network_receive(connections[i].fd)) == NULL) {
-					
-				}else{
-					//printf("DEBUG: New message received from the client...\n");
-					//print_message(message); // for debugging purposes
-					// invoke will update message, returns -1 if something fails
-					msg_process_result = invoke(message);
-					if (msg_process_result == -1) {
-						// printf("DEBUG: There was an error while processing the current message\n");
-						build_error_message(message);
-						// printf("DEBUG: error message:\n");
-						// print_message(message);
-					}
-					//printf("DEBUG: Message that is going to be sent to the client:\n");
-					//print_message(message);
-					if ((send_msg_result = network_send(connections[i].fd, message)) > 0) {
-						//printf("DEBUG: Message was successfuly processed and sent to client\n");
-					} else {
-						//caso ocorra erro de envio de mensagem, fecha-se o socket do cliente
-						/*printf("DEBUG: Message send failed, closing conn\n");
-						close(connections[i].fd);
-						connections[i].fd = -1;
-						closed = 1;
-						break;*/
-					}
-				}
-				free_message(message);
-			}
+	while (keep_looping) {
+		/* Create pthread argument for each connection to client. */
+		/* malloc'ing before accepting a connection causes only one small
+		 * memory when the program exits. It can be safely ignored.
+		 */
 
-			if((connections[i].revents & POLLHUP) || (connections[i].revents & POLLERR)){
-				close(connections[i].fd);
-				connections[i].fd = -1;
-				closed = 1;
-				break;
-			}
+		/* Accept connection to client. */
+		new_socket_fd = accept(listening_socket, (struct sockaddr *) &client_address, &size_client);
+		if (new_socket_fd == -1) {
+		    perror("accept");
+		    return -1;
 		}
-		//se houver fecho de alguma conexao, as posicoes dos clientes
-		//vao ser shifted para a esquerda
-		if(closed){
-			closed = 0;
-			int j, k;
-			for(j = 0; j < nfds; j++){
-				// printf("DEBUG: CONNECTIONS.FD = %d | POS: %d\n",connections[j].fd,j);
-				if(connections[j].fd == -1){
-					for(k = j; k < nfds; k++){
-						connections[k].fd = connections[k+1].fd;
-					}
-					j--;
-					nfds--;
-				}
-			}
+
+		/* Initialise pthread argument. */
+		if (pthread_attr_init(&pthread_attr) != 0) {
+		    perror("pthread_attr_init");
+		    exit(1);
 		}
+		if (pthread_attr_setdetachstate(&pthread_attr, PTHREAD_CREATE_DETACHED) != 0) {
+	            perror("pthread_attr_setdetachstate");
+		    exit(1);
+		}
+
+		/* Create thread to serve connection to client. */
+		if (pthread_create(&pthread, &pthread_attr, thread_main, (void*)&new_socket_fd) != 0) {
+		    perror("pthread_create");
+		    return -1;
+		}
+
 	}
-	free(connections);
+	printf("Saiu do loop\n");
+
+	pthread_mutex_lock(&t_mutex_stop);
+	stop_threads = 1;
+	pthread_mutex_unlock(&t_mutex_stop);
+	// deixar as threads fechar
+	sleep(5);
+	if(pthread_detach(pthread) != 0){
+		perror("Pthread join error");
+	}
+
 	close(listening_socket);
 	return 0;
 }

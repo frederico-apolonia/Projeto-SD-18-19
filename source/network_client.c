@@ -89,7 +89,7 @@ struct message_t *network_send_receive(struct rtable_t * rtable,
 	while(f_try >= 0) {
 		result += write_all(rtable->sockfd, msg_enviada+1, size-1);
 		if (result != size) {
-			printf("DEBUG: ERRO A ESCREVER MSG\n");
+			// printf("DEBUG: ERRO A ESCREVER MSG\n");
 			if (f_try == 0) {
 				return NULL;
 			}

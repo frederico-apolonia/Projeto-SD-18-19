@@ -294,6 +294,7 @@ int msg_value(struct message_t *msg, char *msg_buff){
 	}
 	free(data_w_base);
 	// create value struct
+	msg->content.value = NULL;
 	if ((msg->content.value = data_create2(strlen(data), data)) == NULL) {
 		return -1;
 	}

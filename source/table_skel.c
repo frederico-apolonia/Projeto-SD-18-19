@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "message.h"
 #include "message-private.h"
@@ -14,6 +15,7 @@
 #include "persistent_table-private.h"
 
 extern struct ptable_t *ptable;
+extern pthread_mutex_t t_mutex_write;
 
 int table_skel_init(int n_lists, char *log_filename, int log_size) {
     struct table_t *table;
@@ -58,7 +60,7 @@ int build_error_message(struct message_t *msg) {
 }
 
 int invoke(struct message_t *msg) {
-    int result = 0;
+    int result = 0, put_result = 0;
     char *msg_key = NULL;
     struct data_t* data_aux = NULL;
     struct data_t *msg_data = NULL;
@@ -82,7 +84,10 @@ int invoke(struct message_t *msg) {
 
             msg_key = msg->content.key;
 
+            pthread_mutex_lock(&t_mutex_write);
             result = ptable_del(ptable, msg_key);
+            pthread_mutex_unlock(&t_mutex_write);
+
             free(msg->content.key);
             break;
     
@@ -95,8 +100,9 @@ int invoke(struct message_t *msg) {
             msg->c_type = CT_VALUE;
 
             msg_key = msg->content.key;
-            
+
             data_aux = ptable_get(ptable, msg_key);
+
             if(data_aux == NULL){
             	data_aux = malloc(sizeof(struct data_t*));
             	data_aux->datasize = 0;
@@ -115,7 +121,11 @@ int invoke(struct message_t *msg) {
             msg_key = msg->content.entry->key;
             msg_data = msg->content.entry->value;
 
-            if (ptable_put(ptable, msg_key, msg_data) != -1) {
+            pthread_mutex_lock(&t_mutex_write);
+            put_result = ptable_put(ptable, msg_key, msg_data);
+            pthread_mutex_unlock(&t_mutex_write);
+
+            if (put_result != -1) {
                 msg->opcode += 1;
                 msg->c_type = CT_NONE;
                 result = 0;
@@ -125,6 +135,7 @@ int invoke(struct message_t *msg) {
             }
             // destroy entry to avoid mem leaks!
             entry_destroy(msg->content.entry);
+	    	msg->content.entry = NULL;
             break;
 
         case OP_GETKEYS:

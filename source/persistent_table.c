@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
 #include "persistent_table.h"
 #include "persistent_table-private.h"
 #include "persistence_manager.h"
@@ -81,6 +80,8 @@ void ptable_destroy(struct ptable_t *ptable) {
  * caso de erro.
  */
 int ptable_put(struct ptable_t *ptable, char *key, struct data_t *data) {
+    //A duplicacao de data e key eram para ser feitas em table.c na 1a fase
+    //assim n eh necessario fazer duplicacao aqui
     int key_len = 0;
     char* key_cpy = NULL;
     struct data_t *data_cpy = NULL;
@@ -91,24 +92,11 @@ int ptable_put(struct ptable_t *ptable, char *key, struct data_t *data) {
         return -1;
     }
 
-    // + for \0
-    key_len = strlen(key) + 1;
-    
-    key_cpy = malloc(key_len);
-    if (key_cpy == NULL) {
-        printf("\n\nKey allocation at ptable_put failed\n\n");
-        return -1;
-    }
-    // copy key
-    strncpy(key_cpy, key, key_len);
-    // copy data
-    data_cpy = data_dup(data);
-
     // puts data at the table
-    if(table_put(ptable->table, key_cpy, data_cpy) == -1) {
+    if(table_put(ptable->table, key, data) == -1) {
         printf("\n\nPut at ptable_put failed\n\n");
-        free(key_cpy);
-        data_destroy(data_cpy);
+        free(key);
+        data_destroy(data);
         return -1;
     }
 
@@ -116,15 +104,14 @@ int ptable_put(struct ptable_t *ptable, char *key, struct data_t *data) {
     op = (struct message_t*) malloc(sizeof(struct message_t));
     op->opcode = OP_PUT;
     op->c_type = CT_ENTRY;
-    op->content.entry = entry_create(key, data);
+    op->content.entry = entry_create(strdup(key), data_dup(data));
     // persist
     if (persist_message(ptable, op) == -1) {
         free(op);
         return -1;
     }
-    // free message struct, content is destroyed by table_skel
-    free(op);
-
+    // free message struct
+    free_message(op);
     return 0;
 }
 
@@ -162,7 +149,8 @@ int ptable_del(struct ptable_t *ptable, char *key) {
     if (table_del(ptable->table, key) < 0) {
         // nothing to delete
         return -1;
-    } 
+    }
+
 
     // create tmp message to persist the operation
     op = (struct message_t*) malloc(sizeof(struct message_t));
@@ -187,7 +175,8 @@ int ptable_size(struct ptable_t *ptable) {
         printf("\n\nNO NULL PARAM!\n\n");
         return -1;
     }
-    return table_size(ptable->table);
+    int result = table_size(ptable->table);
+    return result;
 }
 
 /* Função que devolve um array de char* com a cópia de todas as keys da
@@ -199,7 +188,8 @@ char **ptable_get_keys(struct ptable_t *ptable) {
         printf("\n\nNO NULL PARAM!\n\n");
         return NULL;
     }
-    return table_get_keys(ptable->table);
+    char **result = table_get_keys(ptable->table);
+    return result;
 }
 
 /* Função que liberta toda a memória alocada por ptable_get_keys().

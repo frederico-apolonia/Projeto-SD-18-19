@@ -10,7 +10,7 @@ all: data.o entry.o list.o table.o message.o table_skel.o network_server.o read_
 	 server-lib.o client-lib.o
 
 table-server:
-	$(CC) -g -Wall -I $(INC_DIR) $(SRC_DIR)/table-server.c $(LIB_DIR)/server-lib.o -o $(BIN_DIR)/table-server
+	$(CC) -g -Wall -pthread -I $(INC_DIR) $(SRC_DIR)/table-server.c $(LIB_DIR)/server-lib.o -o $(BIN_DIR)/table-server
 
 table-client:
 	$(CC) -g -Wall -pthread -I $(INC_DIR) $(SRC_DIR)/table-client.c $(LIB_DIR)/client-lib.o -lm -o $(BIN_DIR)/table-client
@@ -71,7 +71,7 @@ table_skel.o: $(SRC_DIR) $(INC_DIR)
 	$(CC) -g -c $(SRC_DIR)/table_skel.c -I $(INC_DIR) -o $(OBJ_DIR)/table_skel.o
 
 network_server.o: $(SRC_DIR) $(INC_DIR)
-	$(CC) -g -c $(SRC_DIR)/network_server.c -I $(INC_DIR) -o $(OBJ_DIR)/network_server.o
+	$(CC) -g -c $(SRC_DIR)/network_server.c -pthread -I $(INC_DIR) -o $(OBJ_DIR)/network_server.o
 
 persistence_manager.o: $(SRC_DIR) $(INC_DIR)
 	$(CC) -g -c $(SRC_DIR)/persistence_manager.c -I $(INC_DIR) -o $(OBJ_DIR)/persistence_manager.o
